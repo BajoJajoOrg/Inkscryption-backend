@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:12-alpine
+    restart: on-failure
+    volumes:
+      - ./db/migrations/:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_DB: BajoJajo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+
+  app:
+    container_name: images
+    restart: on-failure
+    depends_on:
+      - db
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
