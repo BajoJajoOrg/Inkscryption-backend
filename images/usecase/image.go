@@ -32,8 +32,8 @@ func GetCore(cfg_sql string) (*UseCase, error) {
 	return &core, nil
 }
 
-func (service *UseCase) GetImage(userID int64, ctx context.Context) ([]structures.Canvas, error) {
-	images, err := service.imageStorage.Get(ctx, userID)
+func (service *UseCase) GetImage(userID int64, dates []string, ctx context.Context) ([]structures.Canvas, error) {
+	images, err := service.imageStorage.Get(ctx, userID, dates)
 	if err != nil {
 		return []structures.Canvas{}, err
 	}

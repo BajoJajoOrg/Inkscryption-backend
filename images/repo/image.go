@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"time"
@@ -73,20 +74,36 @@ func (storage *ImageStorage) pingDb(timer uint32) {
 	}
 }
 
-func (storage *ImageStorage) Get(ctx context.Context, userID int64) ([]structures.Canvas, error) {
+func (storage *ImageStorage) Get(ctx context.Context, userID int64, dates []string) ([]structures.Canvas, error) {
 	//var images []image_struct.Image
 
 	var canvases []structures.Canvas
 
 	query := "SELECT " + canvasFields + " FROM canvas"
 
-	stmt, err := storage.dbReader.Prepare(query)
-	if err != nil {
-		return []structures.Canvas{}, err
+	var args []interface{}
+
+	fmt.Print("\nThisisdates\n", dates, "\n")
+
+	if len(dates) != 0 {
+		//query += " WHERE update_time BETWEEN " + dates[0] + " AND " + dates[1]
+		query += " WHERE update_time BETWEEN $1 AND $2"
+		args = append(args, dates[0], dates[1])
 	}
-	rows, err := stmt.Query()
+
+	// stmt, err := storage.dbReader.Prepare(query)
+	// if err != nil {
+	// 	return []structures.Canvas{}, err
+	// }
+	// rows, err := stmt.Query()
+	// if err != nil {
+	// 	return []structures.Canvas{}, err
+	// }
+	// defer rows.Close()
+
+	rows, err := storage.dbReader.QueryContext(ctx, query, args...)
 	if err != nil {
-		return []structures.Canvas{}, err
+		return nil, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
 
@@ -95,7 +112,7 @@ func (storage *ImageStorage) Get(ctx context.Context, userID int64) ([]structure
 
 		err = rows.Scan(&canvas.Name, &canvas.Url, &canvas.Update)
 		if err != nil {
-			return []structures.Canvas{}, err
+			return nil, err
 		}
 
 		canvases = append(canvases, canvas)
@@ -130,6 +147,7 @@ func (storage *ImageStorage) Get(ctx context.Context, userID int64) ([]structure
 			opts.Expires = time.Duration(lifeTimeSeconds * int64(time.Second))
 		})
 		if err != nil {
+			log.Fatal("failed to aws connect", err)
 			println(err.Error())
 			return []structures.Canvas{}, err
 		}
@@ -224,7 +242,9 @@ func (storage *ImageStorage) Add(ctx context.Context, canvas structures.Canvas, 
 
 	_, err = svc.PutObject(params)
 	if err != nil {
+		log.Fatal("erorr!!", err)
 		return err
 	}
+	log.Print("something is happening")
 	return nil
 }

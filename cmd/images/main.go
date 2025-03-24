@@ -17,6 +17,7 @@ func main() {
 	_, err := configs.LoadConfig(httpPath)
 	if err != nil {
 		fmt.Print("Ahtung")
+		fmt.Print(err)
 	}
 
 	psqInfo := fmt.Sprintf("host=%s port=%s user=%s "+

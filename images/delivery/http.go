@@ -2,6 +2,8 @@ package delivery
 
 import (
 	"bytes"
+	"strings"
+
 	//"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -74,12 +76,18 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 	return func(respWriter http.ResponseWriter, request *http.Request) {
 		//logger := request.Context().Value(Logg).(Log)
 
-		// cell := request.FormValue("cell")
-		// println(cell)
+		//var filterFields = filter.NewOptions(false, []filter.Field{})
 
-		// userId := int64(request.Context().Value(RequestUserID).(int64))
+		createdAt := request.URL.Query().Get("created_at")
+		fmt.Print(createdAt)
+		var dates []string
+		if createdAt == "" {
+			dates = []string{}
+		} else {
+			dates = strings.Split(createdAt, ":")
+		}
 
-		images, err := deliver.useCase.GetImage(1, request.Context())
+		images, err := deliver.useCase.GetImage(1, dates, request.Context())
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
 			requests.SendSimpleResponse(respWriter, request, http.StatusInternalServerError, err.Error())
@@ -152,7 +160,7 @@ func (deliver *ImageHandler) AddImageHandler() func(w http.ResponseWriter, r *ht
 func (deliver *ImageHandler) GetMLHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(respWriter http.ResponseWriter, request *http.Request) {
 		postBody, _ := json.Marshal(map[string]string{
-			"image_url": "https://storage.googleapis.com/kagglesdsdata/datasets/1502872/3977616/test/test0.png?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=databundle-worker-v2%40kaggle-161607.iam.gserviceaccount.com%2F20250315%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250315T114815Z&X-Goog-Expires=345600&X-Goog-SignedHeaders=host&X-Goog-Signature=9c0d7afd4dbe2663906e764d788959e89daa6b60258fd0444c676e99eb1d3af1dae1bbb1722e1d72c4d9935777b35c2cc58bf8c0c5b3ef2da7bf2c91266b62c35683f7cfdfd3821e54650641dbb9abb8183d8e696fe1a86bad79921d807e9da15439b6daa687587624c3a2b124e8c964ccd5969e57e7201d2a6b82a5f7dcd6a2acb5fbe655e6d19ede0f8ac159a29e7b9388957e667199cf3b7b58192451a22ae6498d0db76ab20e7ec80415f62d9978084bda7c530406203119317b9a867bd957f3269d77da1ff0c31a0a6e071f932221ce27eecfacec68250a6904caf6233bc08a4ad223b9b2276b7400ce17538d9327a570dec946ec75987499ac36f1f694",
+			"image_url": "https://mumotiki.ru/sites/default/files/logokar3_0_0.png",
 		})
 
 		responseBody := bytes.NewBuffer(postBody)

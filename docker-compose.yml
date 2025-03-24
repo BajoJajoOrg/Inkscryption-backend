@@ -9,18 +9,28 @@ services:
       POSTGRES_DB: BajoJajo
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d BajoJajo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
 
   app:
-    container_name: images
+    container_name: trying
     restart: on-failure
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8082:8082"
+      - "8087:8087"
+
+volumes: # часть настроек для хранения данных
+  postgresdb-data:
+    driver: local
