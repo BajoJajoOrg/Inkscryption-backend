@@ -31,7 +31,7 @@ type ImageHandler struct {
 }
 
 func (deliver *ImageHandler) ListenAndServe() error {
-	err := http.ListenAndServe(":8087", deliver.mx)
+	err := http.ListenAndServe(":6000", deliver.mx)
 	if err != nil {
 		return fmt.Errorf("listen and serve error: %w", err)
 	}
