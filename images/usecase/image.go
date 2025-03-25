@@ -38,16 +38,31 @@ func (service *UseCase) GetImage(userID int64, dates []string, ctx context.Conte
 		return []structures.Canvas{}, err
 	}
 
-	// if images == "" {
-	// 	return structures.Canvas{}, errors.New("no images for user with such sessionID")
-	// }
-
 	return images, err
 }
 
 func (service *UseCase) AddImage(userImage structures.Canvas, img multipart.File, ctx context.Context) error {
 
 	err := service.imageStorage.Add(ctx, userImage, img)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service *UseCase) DeleteCanvas(canvas structures.Canvas, ctx context.Context) error {
+	err := service.imageStorage.Delete(ctx, canvas)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service *UseCase) UpdateCanvas(canvas structures.Canvas, img multipart.File, ctx context.Context) error {
+
+	err := service.imageStorage.Update(ctx, canvas, img)
 	if err != nil {
 		return err
 	}

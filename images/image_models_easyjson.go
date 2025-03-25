@@ -188,7 +188,73 @@ func (v *Canvases) UnmarshalJSON(data []byte) error {
 func (v *Canvases) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages1(l, v)
 }
-func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(in *jlexer.Lexer, out *Canvas) {
+func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(in *jlexer.Lexer, out *CanvasRequest) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "name":
+			out.Name = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(out *jwriter.Writer, in CanvasRequest) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"name\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Name))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v CanvasRequest) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v CanvasRequest) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *CanvasRequest) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *CanvasRequest) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(l, v)
+}
+func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages3(in *jlexer.Lexer, out *Canvas) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -225,7 +291,7 @@ func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(in *jl
 		in.Consumed()
 	}
 }
-func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(out *jwriter.Writer, in Canvas) {
+func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages3(out *jwriter.Writer, in Canvas) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -250,23 +316,23 @@ func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(out *j
 // MarshalJSON supports json.Marshaler interface
 func (v Canvas) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(&w, v)
+	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages3(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Canvas) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(w, v)
+	easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages3(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Canvas) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(&r, v)
+	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages3(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Canvas) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(l, v)
+	easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages3(l, v)
 }

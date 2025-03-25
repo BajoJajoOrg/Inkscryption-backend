@@ -2,13 +2,13 @@ package delivery
 
 import (
 	"bytes"
+	"io"
 	"strings"
 
 	//"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/BajoJajoOrg/Inkscryption-backend/images/usecase"
 	requests "github.com/BajoJajoOrg/Inkscryption-backend/pkg"
 	"github.com/emirpasic/gods/sets/hashset"
+	"github.com/mailru/easyjson"
 )
 
 type UploadPayload struct {
@@ -47,9 +48,23 @@ func GetApi(c *usecase.UseCase) *ImageHandler {
 
 	println("This is api path", apiPath)
 
-	api.mx.Handle(apiPath+"getImage", requests.AllowedMethodMiddleware(http.HandlerFunc(api.GetImageHandler()), hashset.New("GET")))
+	// получить все канвасы или канвасы отфильтрованные по дате
+	api.mx.Handle(apiPath+"get", requests.AllowedMethodMiddleware(http.HandlerFunc(api.GetImageHandler()), hashset.New("GET")))
+	// api.mx.Handle(apiPath+"getML", requests.AllowedMethodMiddleware(http.HandlerFunc(api.GetMLHandler()), hashset.New("POST")))
+
+	// сохранить канвас
+	api.mx.Handle(apiPath+"add", requests.AllowedMethodMiddleware(http.HandlerFunc(api.AddCanvasHandler()), hashset.New("POST")))
+
+	// получить мл на картинку
+	// поменять структуру запроса на мл
 	api.mx.Handle(apiPath+"getML", requests.AllowedMethodMiddleware(http.HandlerFunc(api.GetMLHandler()), hashset.New("POST")))
-	api.mx.Handle(apiPath+"add", requests.AllowedMethodMiddleware(http.HandlerFunc(api.AddImageHandler()), hashset.New("POST")))
+
+	// апдейт существующего канваса
+	api.mx.Handle(apiPath+"update", requests.AllowedMethodMiddleware(http.HandlerFunc(api.UpdateCanvasHandler()), hashset.New("POST")))
+
+	// удалить канвас по имени
+	api.mx.Handle(apiPath+"delete", requests.AllowedMethodMiddleware(http.HandlerFunc(api.DeleteCanvasHandler()), hashset.New("POST")))
+
 	api.mx.Handle("/test", http.HandlerFunc(api.Test()))
 
 	return api
@@ -104,7 +119,119 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 	}
 }
 
-func (deliver *ImageHandler) AddImageHandler() func(w http.ResponseWriter, r *http.Request) {
+func (deliver *ImageHandler) DeleteCanvasHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(respWriter http.ResponseWriter, request *http.Request) {
+		var r images.CanvasRequest
+
+		fmt.Print("americayaa")
+
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			//log.Fatalf("Bad body %w", err.Error())
+			return
+		}
+
+		err = easyjson.Unmarshal(body, &r)
+		if err != nil {
+			//log.Fatalf("Cant unmarshal body %w", err.Error())
+			return
+		}
+
+		fmt.Print(r.Name)
+
+		userCanvas := images.Canvas{
+			Name: r.Name,
+		}
+
+		err = deliver.useCase.DeleteCanvas(userCanvas, request.Context())
+		if err != nil {
+			//log.Fatalf("do not working %w", err.Error())
+			return
+		}
+
+		requests.SendSimpleResponse(respWriter, request, http.StatusOK, "")
+	}
+}
+
+func (deliver *ImageHandler) AddCanvasHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(respWriter http.ResponseWriter, request *http.Request) {
+		err := request.ParseMultipartForm(10 << 20)
+		if err != nil {
+			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		img, _, err := request.FormFile("image")
+		if err != nil {
+			fmt.Print("err", err)
+		}
+		name := request.FormValue("name")
+
+		//fileType := handler.Header.Get("Content-Type")
+
+		filename := "1/" + name
+		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
+
+		fmt.Print(objectURL)
+
+		userCanvas := structures.Canvas{
+			Name:   filename,
+			Url:    objectURL,
+			Update: time.Now(),
+		}
+
+		err = deliver.useCase.AddImage(userCanvas, img, request.Context())
+		if err != nil {
+			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		requests.SendSimpleResponse(respWriter, request, http.StatusOK, "")
+	}
+}
+
+func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(respWriter http.ResponseWriter, request *http.Request) {
+		err := request.ParseMultipartForm(10 << 20)
+		if err != nil {
+			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		img, _, err := request.FormFile("image")
+		if err != nil {
+			fmt.Print("err", err)
+		}
+		name := request.FormValue("name")
+
+		//fileType := handler.Header.Get("Content-Type")
+
+		filename := "1/" + name
+		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
+
+		fmt.Print(objectURL)
+
+		userCanvas := structures.Canvas{
+			Name:   filename,
+			Url:    objectURL,
+			Update: time.Now(),
+		}
+
+		err = deliver.useCase.UpdateCanvas(userCanvas, img, request.Context())
+		if err != nil {
+			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		requests.SendSimpleResponse(respWriter, request, http.StatusOK, "")
+	}
+}
+
+func (deliver *ImageHandler) GetMLHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(respWriter http.ResponseWriter, request *http.Request) {
 		err := request.ParseMultipartForm(10 << 20)
 		if err != nil {
@@ -117,7 +244,7 @@ func (deliver *ImageHandler) AddImageHandler() func(w http.ResponseWriter, r *ht
 
 		//fileType := handler.Header.Get("Content-Type")
 
-		filename := "1/" + fmt.Sprint(rand.Int()) + handler.Filename
+		filename := "1/" + handler.Filename
 		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
 
 		fmt.Print(objectURL)
@@ -157,38 +284,8 @@ func (deliver *ImageHandler) AddImageHandler() func(w http.ResponseWriter, r *ht
 	}
 }
 
-func (deliver *ImageHandler) GetMLHandler() func(w http.ResponseWriter, r *http.Request) {
-	return func(respWriter http.ResponseWriter, request *http.Request) {
-		postBody, _ := json.Marshal(map[string]string{
-			"image_url": "https://mumotiki.ru/sites/default/files/logokar3_0_0.png",
-		})
-
-		responseBody := bytes.NewBuffer(postBody)
-
-		resp, err := http.Post("http://194.87.252.210:8000/predict/", "application/json", responseBody)
-		if err != nil {
-			fmt.Print("AHTUNG AHTUNG ZLUKEN SOBAKEN ZA YAYCEN KLAC KLAC")
-		}
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Print(err)
-		}
-		sb := string(body)
-		requests.SendSimpleResponse(respWriter, request, http.StatusOK, sb)
-	}
-}
-
 func NewImageDelivery(uc images.UseCase) *ImageHandler {
 	return &ImageHandler{
 		useCase: uc,
 	}
 }
-
-// func MetricTimeMiddleware(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(respWriter http.ResponseWriter, request *http.Request) {
-// 		//start := time.Now()
-// 		next.ServeHTTP(respWriter, request)
-// 	})
-// }

@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8087:8087"
+      - "6000:6000"
 
 volumes: # часть настроек для хранения данных
   postgresdb-data:

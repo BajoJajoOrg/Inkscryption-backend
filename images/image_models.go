@@ -17,4 +17,8 @@ type (
 	Canvases struct {
 		Canvases []Canvas `json:"canvases"`
 	}
+
+	CanvasRequest struct {
+		Name string `json:"name"`
+	}
 )

@@ -8,12 +8,12 @@ apiPath: "/api/v1/"
 #   timer: 1
 server:
   host: "localhost"
-  port: ":8087"
+  port: ":6000"
   swaggerPort: ":8085"
   timeout: 30
 
 database:
-  host: "localhost"
+  host: "db"
   port: "5432"
   dbname: "BajoJajo"
   user: "postgres"
