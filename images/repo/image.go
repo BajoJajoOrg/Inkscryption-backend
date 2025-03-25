@@ -248,11 +248,29 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 }
 
 func (storage *ImageStorage) Delete(ctx context.Context, canvas structures.Canvas) error {
-	query := "DELETE FROM canvas WHERE canvas_name = $1"
 
-	fmt.Print(canvas.Name)
+	query := "SELECT " + canvasFields + " FROM canvas WHERE id = $1"
 
-	_, err := storage.dbReader.Exec(query, canvas.Name)
+	rows, err := storage.dbReader.Query(query, canvas.Id)
+	if err != nil {
+		return fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var cnvs structures.Canvas
+
+	for rows.Next() {
+		err = rows.Scan(&cnvs.Id, &cnvs.Name, &cnvs.Url, &cnvs.Update)
+		if err != nil {
+			return err
+		}
+	}
+
+	query = "DELETE FROM canvas WHERE id = $1"
+
+	//fmt.Print(canvas.Name)
+
+	_, err = storage.dbReader.Exec(query, canvas.Id)
 	if err != nil {
 		//log.Fatalf("fatal %w", err)
 		fmt.Printf("error in db", err)
@@ -268,7 +286,7 @@ func (storage *ImageStorage) Delete(ctx context.Context, canvas structures.Canva
 
 	svc := serviceUpload.New(sess, awsUpload.NewConfig().WithEndpoint(vkCloudHotboxEndpoint).WithRegion(defaultRegion))
 	bucket := "bajojajo"
-	key := "1/" + canvas.Name
+	key := "1/" + cnvs.Name
 
 	input := &serviceUpload.ListObjectsV2Input{
 		Bucket: aws.String(bucket),

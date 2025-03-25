@@ -128,7 +128,7 @@ func (deliver *ImageHandler) DeleteCanvasHandler() func(w http.ResponseWriter, r
 	return func(respWriter http.ResponseWriter, request *http.Request) {
 		var r images.CanvasRequest
 
-		fmt.Print("americayaa")
+		//fmt.Print("americayaa")
 
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -142,11 +142,13 @@ func (deliver *ImageHandler) DeleteCanvasHandler() func(w http.ResponseWriter, r
 			return
 		}
 
-		fmt.Print(r.Name)
+		//fmt.Print(r.Name)
 
 		userCanvas := images.Canvas{
-			Name: r.Name,
+			Id: r.Id,
 		}
+
+		fmt.Print(userCanvas.Id)
 
 		err = deliver.useCase.DeleteCanvas(userCanvas, request.Context())
 		if err != nil {

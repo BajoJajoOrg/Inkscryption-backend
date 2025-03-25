@@ -207,6 +207,8 @@ func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages2(in *jl
 			continue
 		}
 		switch key {
+		case "id":
+			out.Id = int64(in.Int64())
 		case "name":
 			out.Name = string(in.String())
 		default:
@@ -224,8 +226,13 @@ func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages2(out *j
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"name\":"
+		const prefix string = ",\"id\":"
 		out.RawString(prefix[1:])
+		out.Int64(int64(in.Id))
+	}
+	{
+		const prefix string = ",\"name\":"
+		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	out.RawByte('}')
