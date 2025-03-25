@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	httpPath = "../../configs/image_http_config.yaml"
+	httpPath = "/app/configs/image_http_config.yaml"
 )
 
 func main() {
