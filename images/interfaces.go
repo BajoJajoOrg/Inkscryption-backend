@@ -11,6 +11,7 @@ type (
 		AddImage(userImage Canvas, img multipart.File, ctx context.Context) error
 		DeleteCanvas(canvas Canvas, ctx context.Context) error
 		UpdateCanvas(canvas Canvas, img multipart.File, ctx context.Context) error
+		AddML(userImage Canvas, img multipart.File, ctx context.Context) error
 	}
 
 	ImgStorage interface {
@@ -18,5 +19,6 @@ type (
 		Add(ctx context.Context, image Canvas, img multipart.File) error
 		Delete(ctx context.Context, canvas Canvas) error
 		Update(ctx context.Context, canvas Canvas, img multipart.File) error
+		AddML(ctx context.Context, canvas Canvas, img multipart.File) error
 	}
 )

@@ -31,7 +31,7 @@ type ImageHandler struct {
 }
 
 func (deliver *ImageHandler) ListenAndServe() error {
-	err := http.ListenAndServe(":8087", deliver.mx)
+	err := http.ListenAndServe(":6000", deliver.mx)
 	if err != nil {
 		return fmt.Errorf("listen and serve error: %w", err)
 	}
@@ -212,7 +212,7 @@ func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r
 		filename := "1/" + name
 		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
 
-		fmt.Print(objectURL)
+		//fmt.Print(objectURL)
 
 		userCanvas := structures.Canvas{
 			Name:   filename,
@@ -240,14 +240,17 @@ func (deliver *ImageHandler) GetMLHandler() func(w http.ResponseWriter, r *http.
 			return
 		}
 
-		img, handler, err := request.FormFile("image")
+		img, _, err := request.FormFile("image")
+		if err != nil {
+			fmt.Print("err", err)
+		}
 
 		//fileType := handler.Header.Get("Content-Type")
 
-		filename := "1/" + handler.Filename
+		filename := "1/" + "asdfjlkasdfqwerpiou123048WORKINGSTUFFFORML"
 		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
 
-		fmt.Print(objectURL)
+		//fmt.Print(objectURL)
 
 		userCanvas := structures.Canvas{
 			Name:   filename,
@@ -255,7 +258,7 @@ func (deliver *ImageHandler) GetMLHandler() func(w http.ResponseWriter, r *http.
 			Update: time.Now(),
 		}
 
-		err = deliver.useCase.AddImage(userCanvas, img, request.Context())
+		err = deliver.useCase.AddML(userCanvas, img, request.Context())
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
 			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())

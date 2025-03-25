@@ -150,6 +150,49 @@ func (storage *ImageStorage) Add(ctx context.Context, canvas structures.Canvas, 
 	return nil
 }
 
+func (storage *ImageStorage) AddML(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
+	//logger := ctx.Value(Logg).(Log)
+	// query := "INSERT INTO canvas (canvas_name, url, update_time) VALUES ($1, $2, $3);"
+
+	// //logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("hehe ", image.UserId, image.CellNumber, image.Url)
+	// stmt, err := storage.dbReader.Prepare(query) // using prepared statement
+	// if err != nil {
+	// 	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
+	// 	return fmt.Errorf("Add img %w", err)
+	// }
+
+	// _, err = stmt.Exec(canvas.Name, canvas.Url, canvas.Update)
+	// if err != nil {
+	// 	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
+	// 	return fmt.Errorf("Add img %w", err)
+	// }
+
+	sess, err := session.NewSession(&awsUpload.Config{
+		Region: aws.String("ru-msk"),
+	})
+	if err != nil {
+		return err
+	}
+
+	svc := serviceUpload.New(sess, awsUpload.NewConfig().WithEndpoint(vkCloudHotboxEndpoint).WithRegion(defaultRegion))
+	bucket := "bajojajo"
+
+	params := &serviceUpload.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(canvas.Name),
+		Body:   img,
+		ACL:    aws.String("public-read"),
+	}
+
+	_, err = svc.PutObject(params)
+	if err != nil {
+		log.Fatal("erorr!!", err)
+		return err
+	}
+	log.Print("something is happening")
+	return nil
+}
+
 func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
 	// //logger := ctx.Value(Logg).(Log)
 	query := `UPDATE canvas

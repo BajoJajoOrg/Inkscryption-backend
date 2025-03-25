@@ -51,6 +51,16 @@ func (service *UseCase) AddImage(userImage structures.Canvas, img multipart.File
 	return nil
 }
 
+func (service *UseCase) AddML(userImage structures.Canvas, img multipart.File, ctx context.Context) error {
+
+	err := service.imageStorage.AddML(ctx, userImage, img)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (service *UseCase) DeleteCanvas(canvas structures.Canvas, ctx context.Context) error {
 	err := service.imageStorage.Delete(ctx, canvas)
 	if err != nil {
