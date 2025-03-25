@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
+	"strconv"
+	"strings"
 	"time"
 
 	structures "github.com/BajoJajoOrg/Inkscryption-backend/images"
@@ -31,7 +33,7 @@ type ImageStorage struct {
 
 const (
 	personImageFields = "person_id, image_url"
-	canvasFields      = "canvas_name, url, update_time"
+	canvasFields      = "id, canvas_name, url, update_time"
 )
 
 func NewImageStorage(dbReader *sql.DB) *ImageStorage {
@@ -70,21 +72,52 @@ func (storage *ImageStorage) pingDb(timer uint32) {
 	}
 }
 
-func (storage *ImageStorage) Get(ctx context.Context, userID int64, dates []string) ([]structures.Canvas, error) {
+func (storage *ImageStorage) GetById(ctx context.Context, id int64) (structures.Canvas, error) {
+	query := "SELECT " + canvasFields + " FROM canvas WHERE id = $1"
+
+	rows, err := storage.dbReader.Query(query, id)
+	if err != nil {
+		return structures.Canvas{}, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var canvas structures.Canvas
+
+	for rows.Next() {
+		err = rows.Scan(&canvas.Id, &canvas.Name, &canvas.Url, &canvas.Update)
+		if err != nil {
+			return structures.Canvas{}, err
+		}
+	}
+
+	return canvas, nil
+}
+
+func (storage *ImageStorage) Get(ctx context.Context, dates []string, name string) ([]structures.Canvas, error) {
 	//var images []image_struct.Image
 
 	var canvases []structures.Canvas
 
 	query := "SELECT " + canvasFields + " FROM canvas"
-
 	var args []interface{}
+	var conditions []string
 
-	fmt.Print("\nThisisdates\n", dates, "\n")
+	// fmt.Print("\nThisisdates\n", dates, "\n")
 
-	if len(dates) != 0 {
+	if len(dates) == 2 {
 		//query += " WHERE update_time BETWEEN " + dates[0] + " AND " + dates[1]
-		query += " WHERE update_time BETWEEN $1 AND $2"
+		//query += " WHERE update_time BETWEEN $1 AND $2"
+		conditions = append(conditions, "update_time BETWEEN $1 AND $2")
 		args = append(args, dates[0], dates[1])
+	}
+
+	if name != "" {
+		conditions = append(conditions, "canvas_name = $"+strconv.Itoa(len(args)+1))
+		args = append(args, name)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	rows, err := storage.dbReader.QueryContext(ctx, query, args...)
@@ -96,7 +129,7 @@ func (storage *ImageStorage) Get(ctx context.Context, userID int64, dates []stri
 	for rows.Next() {
 		var canvas structures.Canvas
 
-		err = rows.Scan(&canvas.Name, &canvas.Url, &canvas.Update)
+		err = rows.Scan(&canvas.Id, &canvas.Name, &canvas.Url, &canvas.Update)
 		if err != nil {
 			return nil, err
 		}
@@ -107,22 +140,20 @@ func (storage *ImageStorage) Get(ctx context.Context, userID int64, dates []stri
 	return canvases, nil
 }
 
-func (storage *ImageStorage) Add(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
+func (storage *ImageStorage) Add(ctx context.Context, canvas structures.Canvas) (id int64, err error) {
 	//logger := ctx.Value(Logg).(Log)
-	query := "INSERT INTO canvas (canvas_name, url, update_time) VALUES ($1, $2, $3);"
+	query := "INSERT INTO canvas (canvas_name, update_time) VALUES ($1, $2) RETURNING id;"
 
-	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("hehe ", image.UserId, image.CellNumber, image.Url)
-	stmt, err := storage.dbReader.Prepare(query) // using prepared statement
+	var canvas_id int64
+	err = storage.dbReader.QueryRowContext(ctx, query, canvas.Name, canvas.Update).Scan(&canvas_id)
 	if err != nil {
-		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
-		return fmt.Errorf("Add img %w", err)
+		return 0, fmt.Errorf("failed to insert into canvas: %w", err)
 	}
 
-	_, err = stmt.Exec(canvas.Name, canvas.Url, canvas.Update)
-	if err != nil {
-		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
-		return fmt.Errorf("Add img %w", err)
-	}
+	return canvas_id, nil
+}
+
+func (storage *ImageStorage) AddML(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
 
 	sess, err := session.NewSession(&awsUpload.Config{
 		Region: aws.String("ru-msk"),
@@ -150,54 +181,31 @@ func (storage *ImageStorage) Add(ctx context.Context, canvas structures.Canvas, 
 	return nil
 }
 
-func (storage *ImageStorage) AddML(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
-	//logger := ctx.Value(Logg).(Log)
-	// query := "INSERT INTO canvas (canvas_name, url, update_time) VALUES ($1, $2, $3);"
+func (storage *ImageStorage) UpdateName(ctx context.Context, name string, id int64) error {
+	query := `UPDATE canvas
+			SET canvas_name = $1
+			WHERE id = $2`
 
-	// //logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("hehe ", image.UserId, image.CellNumber, image.Url)
-	// stmt, err := storage.dbReader.Prepare(query) // using prepared statement
-	// if err != nil {
-	// 	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
-	// 	return fmt.Errorf("Add img %w", err)
-	// }
-
-	// _, err = stmt.Exec(canvas.Name, canvas.Url, canvas.Update)
-	// if err != nil {
-	// 	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
-	// 	return fmt.Errorf("Add img %w", err)
-	// }
-
-	sess, err := session.NewSession(&awsUpload.Config{
-		Region: aws.String("ru-msk"),
-	})
+	stmt, err := storage.dbReader.Prepare(query) // using prepared statement
 	if err != nil {
-		return err
+		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
+		return fmt.Errorf("Add img %w", err)
 	}
 
-	svc := serviceUpload.New(sess, awsUpload.NewConfig().WithEndpoint(vkCloudHotboxEndpoint).WithRegion(defaultRegion))
-	bucket := "bajojajo"
-
-	params := &serviceUpload.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(canvas.Name),
-		Body:   img,
-		ACL:    aws.String("public-read"),
-	}
-
-	_, err = svc.PutObject(params)
+	_, err = stmt.Exec(name, id)
 	if err != nil {
-		log.Fatal("erorr!!", err)
-		return err
+		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
+		return fmt.Errorf("Add img %w", err)
 	}
-	log.Print("something is happening")
+
 	return nil
 }
 
 func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
 	// //logger := ctx.Value(Logg).(Log)
 	query := `UPDATE canvas
-			SET update_time = $1
-			WHERE canvas_name = $2`
+			SET update_time = $1, url = $2
+			WHERE id = $3`
 
 	//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("hehe ", image.UserId, image.CellNumber, image.Url)
 	stmt, err := storage.dbReader.Prepare(query) // using prepared statement
@@ -206,7 +214,7 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 		return fmt.Errorf("Add img %w", err)
 	}
 
-	_, err = stmt.Exec(time.Now(), canvas.Name)
+	_, err = stmt.Exec(time.Now(), canvas.Url, canvas.Id)
 	if err != nil {
 		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
 		return fmt.Errorf("Add img %w", err)
@@ -221,10 +229,11 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 
 	svc := serviceUpload.New(sess, awsUpload.NewConfig().WithEndpoint(vkCloudHotboxEndpoint).WithRegion(defaultRegion))
 	bucket := "bajojajo"
+	key := "1/" + canvas.Name
 
 	params := &serviceUpload.PutObjectInput{
 		Bucket: aws.String(bucket),
-		Key:    aws.String(canvas.Name),
+		Key:    aws.String(key),
 		Body:   img,
 		ACL:    aws.String("public-read"),
 	}

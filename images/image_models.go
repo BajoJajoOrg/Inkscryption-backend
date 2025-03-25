@@ -9,6 +9,7 @@ type (
 	}
 
 	Canvas struct {
+		Id     int64     `json:"id"`
 		Name   string    `json:"canvas_name"`
 		Url    string    `json:"canvas_url"`
 		Update time.Time `json:"update_time"`

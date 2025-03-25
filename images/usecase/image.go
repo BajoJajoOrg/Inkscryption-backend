@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"mime/multipart"
+	"strconv"
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/images"
 	structures "github.com/BajoJajoOrg/Inkscryption-backend/images"
@@ -32,8 +34,20 @@ func GetCore(cfg_sql string) (*UseCase, error) {
 	return &core, nil
 }
 
-func (service *UseCase) GetImage(userID int64, dates []string, ctx context.Context) ([]structures.Canvas, error) {
-	images, err := service.imageStorage.Get(ctx, userID, dates)
+func (service *UseCase) GetImage(dates []string, name string, id string, ctx context.Context) ([]structures.Canvas, error) {
+
+	if id != "" {
+		canvas_id, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			return []structures.Canvas{}, err
+		}
+		image, err := service.imageStorage.GetById(ctx, canvas_id)
+		images := []structures.Canvas{}
+		images = append(images, image)
+		return images, err
+	}
+
+	images, err := service.imageStorage.Get(ctx, dates, name)
 	if err != nil {
 		return []structures.Canvas{}, err
 	}
@@ -41,14 +55,14 @@ func (service *UseCase) GetImage(userID int64, dates []string, ctx context.Conte
 	return images, err
 }
 
-func (service *UseCase) AddImage(userImage structures.Canvas, img multipart.File, ctx context.Context) error {
+func (service *UseCase) AddImage(userCanvas structures.Canvas, ctx context.Context) (int64, error) {
 
-	err := service.imageStorage.Add(ctx, userImage, img)
+	id, err := service.imageStorage.Add(ctx, userCanvas)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }
 
 func (service *UseCase) AddML(userImage structures.Canvas, img multipart.File, ctx context.Context) error {
@@ -72,9 +86,25 @@ func (service *UseCase) DeleteCanvas(canvas structures.Canvas, ctx context.Conte
 
 func (service *UseCase) UpdateCanvas(canvas structures.Canvas, img multipart.File, ctx context.Context) error {
 
-	err := service.imageStorage.Update(ctx, canvas, img)
-	if err != nil {
-		return err
+	if canvas.Name != "" {
+		// canvas_id, err := strconv.ParseInt(canvas.Id, 10, 64)
+		// if err != nil {
+		// 	return err
+		// }
+		err := service.imageStorage.UpdateName(ctx, canvas.Name, canvas.Id)
+		if err != nil {
+			return nil
+		}
+	}
+
+	fmt.Print("wiiide")
+
+	if img != nil {
+		fmt.Print("heyay!")
+		err := service.imageStorage.Update(ctx, canvas, img)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

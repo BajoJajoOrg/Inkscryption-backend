@@ -3,6 +3,7 @@ package delivery
 import (
 	"bytes"
 	"io"
+	"strconv"
 	"strings"
 
 	//"crypto/rand"
@@ -93,8 +94,10 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 
 		//var filterFields = filter.NewOptions(false, []filter.Field{})
 
+		canvasId := request.FormValue("id")
+
 		createdAt := request.URL.Query().Get("created_at")
-		fmt.Print(createdAt)
+		//fmt.Print(createdAt)
 		var dates []string
 		if createdAt == "" {
 			dates = []string{}
@@ -102,7 +105,9 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 			dates = strings.Split(createdAt, ":")
 		}
 
-		images, err := deliver.useCase.GetImage(1, dates, request.Context())
+		canvasName := request.URL.Query().Get("name")
+
+		images, err := deliver.useCase.GetImage(dates, canvasName, canvasId, request.Context())
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
 			requests.SendSimpleResponse(respWriter, request, http.StatusInternalServerError, err.Error())
@@ -155,45 +160,40 @@ func (deliver *ImageHandler) DeleteCanvasHandler() func(w http.ResponseWriter, r
 
 func (deliver *ImageHandler) AddCanvasHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(respWriter http.ResponseWriter, request *http.Request) {
-		err := request.ParseMultipartForm(10 << 20)
-		if err != nil {
-			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
-			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
-			return
-		}
 
-		img, _, err := request.FormFile("image")
-		if err != nil {
-			fmt.Print("err", err)
-		}
 		name := request.FormValue("name")
-
-		//fileType := handler.Header.Get("Content-Type")
-
-		filename := "1/" + name
-		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
-
-		fmt.Print(objectURL)
-
 		userCanvas := structures.Canvas{
-			Name:   filename,
-			Url:    objectURL,
+			Name:   name,
 			Update: time.Now(),
 		}
 
-		err = deliver.useCase.AddImage(userCanvas, img, request.Context())
+		id, err := deliver.useCase.AddImage(userCanvas, request.Context())
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
 			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		requests.SendSimpleResponse(respWriter, request, http.StatusOK, "")
+		respBody, err := json.Marshal(map[string]string{
+			"id": strconv.Itoa(int(id)),
+		})
+		if err != nil {
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		responseBody := bytes.NewBuffer(respBody)
+
+		requests.SendSimpleResponse(respWriter, request, http.StatusOK, responseBody.String())
 	}
 }
 
 func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(respWriter http.ResponseWriter, request *http.Request) {
+
+		id := request.FormValue("id")
+		name := request.FormValue("name")
+
 		err := request.ParseMultipartForm(10 << 20)
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
@@ -205,7 +205,6 @@ func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r
 		if err != nil {
 			fmt.Print("err", err)
 		}
-		name := request.FormValue("name")
 
 		//fileType := handler.Header.Get("Content-Type")
 
@@ -214,8 +213,15 @@ func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r
 
 		//fmt.Print(objectURL)
 
+		canvas_id, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		userCanvas := structures.Canvas{
-			Name:   filename,
+			Id:     canvas_id,
+			Name:   name,
 			Url:    objectURL,
 			Update: time.Now(),
 		}

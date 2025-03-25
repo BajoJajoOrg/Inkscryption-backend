@@ -273,6 +273,8 @@ func easyjsonEafed2a8DecodeGithubComBajoJajoOrgInkscryptionBackendImages3(in *jl
 			continue
 		}
 		switch key {
+		case "id":
+			out.Id = int64(in.Int64())
 		case "canvas_name":
 			out.Name = string(in.String())
 		case "canvas_url":
@@ -296,8 +298,13 @@ func easyjsonEafed2a8EncodeGithubComBajoJajoOrgInkscryptionBackendImages3(out *j
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"canvas_name\":"
+		const prefix string = ",\"id\":"
 		out.RawString(prefix[1:])
+		out.Int64(int64(in.Id))
+	}
+	{
+		const prefix string = ",\"canvas_name\":"
+		out.RawString(prefix)
 		out.String(string(in.Name))
 	}
 	{
