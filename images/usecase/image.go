@@ -44,7 +44,7 @@ func (service *UseCase) GetImage(dates []string, name string, id string, ctx con
 		if err != nil {
 			return []structures.Canvas{}, err
 		}
-		return canvases, err
+		return canvases, nil
 	}
 
 	images, err := service.imageStorage.Get(ctx, dates, name)

@@ -1,6 +1,8 @@
 package images
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	Image struct {
@@ -18,6 +20,10 @@ type (
 	Canvases struct {
 		Canvases []Canvas `json:"canvases"`
 	}
+
+	// CanvasFile struct {
+	// 	File os.File `json:"file"`
+	// }
 
 	CanvasRequest struct {
 		Id   int64  `json:"id"`

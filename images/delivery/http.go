@@ -3,6 +3,8 @@ package delivery
 import (
 	"bytes"
 	"io"
+	"log"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -71,17 +73,6 @@ func GetApi(c *usecase.UseCase) *ImageHandler {
 	return api
 }
 
-// func GetApi(c *usecase.UseCase) *ImageHandler {
-// 	api := &ImageHandler{
-// 		useCase: c,
-// 		mx:      http.NewServeMux(),
-// 	}
-// 	var apiPath = "/api/v1"
-
-// 	println("This is api path", apiPath)
-
-// }
-
 func (deliver *ImageHandler) Test() func(w http.ResponseWriter, r *http.Request) {
 	return func(respWriter http.ResponseWriter, request *http.Request) {
 		requests.SendSimpleResponse(respWriter, request, http.StatusOK, "vse ok")
@@ -111,6 +102,28 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 		if err != nil {
 			//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn(err.Error())
 			requests.SendSimpleResponse(respWriter, request, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if canvasId != "" {
+			resp, err := http.Get(images[0].Url)
+			if err != nil {
+				requests.SendSimpleResponse(respWriter, request, http.StatusInternalServerError, "failed to fetch image")
+				return
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				requests.SendSimpleResponse(respWriter, request, resp.StatusCode, "failed to fetch image")
+				return
+			}
+
+			respWriter.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+			respWriter.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+			respWriter.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s", filepath.Base(images[0].Url)))
+
+			_, err = io.Copy(respWriter, resp.Body)
+			if err != nil {
+				log.Printf("failed to stream file: %v", err)
+			}
 			return
 		}
 
@@ -188,6 +201,7 @@ func (deliver *ImageHandler) AddCanvasHandler() func(w http.ResponseWriter, r *h
 		respBody, err := json.Marshal(map[string]string{
 			"id": strconv.Itoa(int(id)),
 		})
+
 		if err != nil {
 			requests.SendSimpleResponse(respWriter, request, http.StatusBadRequest, err.Error())
 			return

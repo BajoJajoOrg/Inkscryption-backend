@@ -86,6 +86,12 @@ func (storage *ImageStorage) GetById(ctx context.Context, id int64) ([]structure
 
 	var nullUrl sql.NullString
 
+	// out, err := os.Create("output")
+	// if err != nil {
+	// 	return []structures.Canvas{}, nil, fmt.Errorf("file failed: %w", err)
+	// }
+	// defer out.Close()
+
 	for rows.Next() {
 		var canvas structures.Canvas
 
