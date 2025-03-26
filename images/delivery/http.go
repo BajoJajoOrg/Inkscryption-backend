@@ -222,7 +222,7 @@ func (deliver *ImageHandler) UpdateCanvasHandler() func(w http.ResponseWriter, r
 		filename := "1/" + name
 		objectURL := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
 
-		//fmt.Print(objectURL)
+		// fmt.Print(objectURL)
 
 		canvas_id, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {

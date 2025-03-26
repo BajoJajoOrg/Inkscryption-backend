@@ -87,10 +87,6 @@ func (service *UseCase) DeleteCanvas(canvas structures.Canvas, ctx context.Conte
 func (service *UseCase) UpdateCanvas(canvas structures.Canvas, img multipart.File, ctx context.Context) error {
 
 	if canvas.Name != "" {
-		// canvas_id, err := strconv.ParseInt(canvas.Id, 10, 64)
-		// if err != nil {
-		// 	return err
-		// }
 		err := service.imageStorage.UpdateName(ctx, canvas.Name, canvas.Id)
 		if err != nil {
 			return nil
@@ -100,8 +96,8 @@ func (service *UseCase) UpdateCanvas(canvas structures.Canvas, img multipart.Fil
 	//fmt.Print("wiiide")
 
 	if img != nil {
-		//fmt.Print("heyay!")
 		err := service.imageStorage.Update(ctx, canvas, img)
+		// fmt.Print("Updatin img")
 		if err != nil {
 			return err
 		}

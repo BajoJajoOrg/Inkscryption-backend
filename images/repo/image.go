@@ -224,7 +224,7 @@ func (storage *ImageStorage) UpdateName(ctx context.Context, name string, id int
 
 func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
 
-	query := "SELECT " + canvasFields + " FROM canvas WHERE id = $1"
+	query := "SELECT canvas_name FROM canvas WHERE id = $1"
 
 	rows, err := storage.dbReader.Query(query, canvas.Id)
 	if err != nil {
@@ -235,13 +235,15 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 	var cnvs structures.Canvas
 
 	for rows.Next() {
-		err = rows.Scan(&cnvs.Id, &cnvs.Name, &cnvs.Url, &cnvs.Update)
+		err = rows.Scan(&cnvs.Name)
 		if err != nil {
 			return err
 		}
 	}
 
 	newUrl := canvas.Url + cnvs.Name
+
+	// fmt.Print("This is new url - ", newUrl)
 
 	// //logger := ctx.Value(Logg).(Log)
 	query = `UPDATE canvas
