@@ -241,7 +241,8 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 		}
 	}
 
-	newUrl := canvas.Url + cnvs.Name
+	filename := "1/" + cnvs.Name
+	newUrl := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
 
 	// fmt.Print("This is new url - ", newUrl)
 
