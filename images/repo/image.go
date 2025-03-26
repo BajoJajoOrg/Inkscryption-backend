@@ -75,19 +75,28 @@ func (storage *ImageStorage) pingDb(timer uint32) {
 func (storage *ImageStorage) GetById(ctx context.Context, id int64) (structures.Canvas, error) {
 	query := "SELECT " + canvasFields + " FROM canvas WHERE id = $1"
 
-	rows, err := storage.dbReader.Query(query, id)
+	rows, err := storage.dbReader.QueryContext(ctx, query, id)
 	if err != nil {
+		//print("nanana")
 		return structures.Canvas{}, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
 
 	var canvas structures.Canvas
+	var nullUrl sql.NullString
 
 	for rows.Next() {
-		err = rows.Scan(&canvas.Id, &canvas.Name, &canvas.Url, &canvas.Update)
+		err = rows.Scan(&canvas.Id, &canvas.Name, &nullUrl, &canvas.Update)
 		if err != nil {
+			print("thereyuougo")
 			return structures.Canvas{}, err
 		}
+	}
+
+	if nullUrl.Valid {
+		canvas.Url = nullUrl.String
+	} else {
+		canvas.Url = ""
 	}
 
 	return canvas, nil
@@ -126,12 +135,20 @@ func (storage *ImageStorage) Get(ctx context.Context, dates []string, name strin
 	}
 	defer rows.Close()
 
+	var nullUrl sql.NullString
+
 	for rows.Next() {
 		var canvas structures.Canvas
 
-		err = rows.Scan(&canvas.Id, &canvas.Name, &canvas.Url, &canvas.Update)
+		err = rows.Scan(&canvas.Id, &canvas.Name, &nullUrl, &canvas.Update)
 		if err != nil {
 			return nil, err
+		}
+
+		if nullUrl.Valid {
+			canvas.Url = nullUrl.String
+		} else {
+			canvas.Url = ""
 		}
 
 		canvases = append(canvases, canvas)
