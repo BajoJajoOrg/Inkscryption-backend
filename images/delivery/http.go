@@ -114,8 +114,17 @@ func (deliver *ImageHandler) GetImageHandler() func(w http.ResponseWriter, r *ht
 			return
 		}
 
-		canvases := structures.Canvases{
-			Canvases: images,
+		//print(images)
+
+		var canvases structures.Canvases
+		if images == nil {
+			canvases = structures.Canvases{
+				Canvases: []structures.Canvas{},
+			}
+		} else {
+			canvases = structures.Canvases{
+				Canvases: images,
+			}
 		}
 
 		//requests.SendSimpleResponse(respWriter, request, http.StatusOK, images)

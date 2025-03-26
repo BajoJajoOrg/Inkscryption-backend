@@ -16,7 +16,7 @@ type (
 
 	ImgStorage interface {
 		Get(ctx context.Context, dates []string, name string) ([]Canvas, error)
-		GetById(ctx context.Context, id int64) (Canvas, error)
+		GetById(ctx context.Context, id int64) ([]Canvas, error)
 		Add(ctx context.Context, canvas Canvas) (id int64, err error)
 		Delete(ctx context.Context, canvas Canvas) error
 		Update(ctx context.Context, canvas Canvas, img multipart.File) error

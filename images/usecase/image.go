@@ -41,10 +41,11 @@ func (service *UseCase) GetImage(dates []string, name string, id string, ctx con
 		if err != nil {
 			return []structures.Canvas{}, err
 		}
-		image, err := service.imageStorage.GetById(ctx, canvas_id)
-		images := []structures.Canvas{}
-		images = append(images, image)
-		return images, err
+		canvases, err := service.imageStorage.GetById(ctx, canvas_id)
+		if err != nil {
+			return []structures.Canvas{}, err
+		}
+		return canvases, err
 	}
 
 	images, err := service.imageStorage.Get(ctx, dates, name)
