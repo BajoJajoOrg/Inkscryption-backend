@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"mime/multipart"
 	"strconv"
 
@@ -98,10 +97,10 @@ func (service *UseCase) UpdateCanvas(canvas structures.Canvas, img multipart.Fil
 		}
 	}
 
-	fmt.Print("wiiide")
+	//fmt.Print("wiiide")
 
 	if img != nil {
-		fmt.Print("heyay!")
+		//fmt.Print("heyay!")
 		err := service.imageStorage.Update(ctx, canvas, img)
 		if err != nil {
 			return err

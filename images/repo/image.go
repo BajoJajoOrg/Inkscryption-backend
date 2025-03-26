@@ -223,8 +223,28 @@ func (storage *ImageStorage) UpdateName(ctx context.Context, name string, id int
 }
 
 func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canvas, img multipart.File) error {
+
+	query := "SELECT " + canvasFields + " FROM canvas WHERE id = $1"
+
+	rows, err := storage.dbReader.Query(query, canvas.Id)
+	if err != nil {
+		return fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var cnvs structures.Canvas
+
+	for rows.Next() {
+		err = rows.Scan(&cnvs.Id, &cnvs.Name, &cnvs.Url, &cnvs.Update)
+		if err != nil {
+			return err
+		}
+	}
+
+	newUrl := canvas.Url + cnvs.Name
+
 	// //logger := ctx.Value(Logg).(Log)
-	query := `UPDATE canvas
+	query = `UPDATE canvas
 			SET update_time = $1, url = $2
 			WHERE id = $3`
 
@@ -235,7 +255,7 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 		return fmt.Errorf("Add img %w", err)
 	}
 
-	_, err = stmt.Exec(time.Now(), canvas.Url, canvas.Id)
+	_, err = stmt.Exec(time.Now(), newUrl, canvas.Id)
 	if err != nil {
 		//logger.Logger.WithFields(logrus.Fields{RequestID: logger.RequestID}).Warn("can't query: ", err.Error())
 		return fmt.Errorf("Add img %w", err)
@@ -250,7 +270,7 @@ func (storage *ImageStorage) Update(ctx context.Context, canvas structures.Canva
 
 	svc := serviceUpload.New(sess, awsUpload.NewConfig().WithEndpoint(vkCloudHotboxEndpoint).WithRegion(defaultRegion))
 	bucket := "bajojajo"
-	key := "1/" + canvas.Name
+	key := "1/" + cnvs.Name
 
 	params := &serviceUpload.PutObjectInput{
 		Bucket: aws.String(bucket),
