@@ -517,7 +517,8 @@ func (h *handlers) TextToImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	// w.Header().Set("Content-Type", "image/svg+xml")
+	// w.WriteHeader(http.StatusOK)
+	// w.Write(data)
+	render.JSON(w, r, data)
 }
