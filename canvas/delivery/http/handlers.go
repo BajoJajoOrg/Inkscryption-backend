@@ -28,6 +28,10 @@ type Request struct {
 	CanvasName string `json:"canvas_name"`
 }
 
+type MLRequest struct {
+	Text string `json:"text"`
+}
+
 type Response struct {
 	Id         int       `json:"id"`
 	UpdatedAt  time.Time `json:"update_time"`
@@ -72,6 +76,7 @@ func (h *handlers) MapHandlers() error {
 	})
 	h.router.Route("/ml", func(r chi.Router) {
 		r.Post("/image-to-text", h.ImageToText)
+		r.Post("/text-to-image", h.TextToImage)
 	})
 
 	return nil
@@ -457,4 +462,62 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 		"text": sb,
 	})
 	render.JSON(w, r, response)
+}
+
+func (h *handlers) TextToImage(w http.ResponseWriter, r *http.Request) {
+
+	var req MLRequest
+
+	err := render.DecodeJSON(r.Body, &req)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	h.logger.Info("request body decoded", slog.Any("request", req))
+
+	postBody, _ := json.Marshal(map[string]string{
+		"text": req.Text,
+	})
+
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err := http.Post("http://194.87.252.210:8001/draw", "application/json", responseBody)
+	if err != nil {
+		h.logger.Error("ML service unavaliable", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("ML service unavaliable"))
+		return
+	}
+	defer resp.Body.Close()
+
+	// if resp.StatusCode != http.StatusOK {
+	// 	r
+	// }
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		h.logger.Error("cant read body from ML", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("cant read body from ML"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
