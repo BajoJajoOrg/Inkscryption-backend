@@ -1,0 +1,453 @@
+package delivery
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
+	"github.com/BajoJajoOrg/Inkscryption-backend/config"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/filter"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/response"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+)
+
+type Request struct {
+	CanvasName string `json:"canvas_name"`
+}
+
+type Response struct {
+	Id         int       `json:"id"`
+	UpdatedAt  time.Time `json:"update_time"`
+	CanvasName string    `json:"canvas_name"`
+}
+
+type handlers struct {
+	cfg      *config.Config
+	router   *chi.Mux
+	canvasUC canvas.UseCase
+	logger   *slog.Logger
+}
+
+func New(cfg *config.Config, router *chi.Mux, canvasUC canvas.UseCase, logger *slog.Logger) canvas.Handlers {
+	return &handlers{
+		cfg:      cfg,
+		router:   router,
+		canvasUC: canvasUC,
+		logger:   logger,
+	}
+}
+
+func (h *handlers) ListenAndServe(cfg config.HTTPServer) error {
+	address := ":" + cfg.Port
+	err := http.ListenAndServe(address, h.router)
+	if err != nil {
+		return fmt.Errorf("listen and serve error: %w", err)
+	}
+	return nil
+}
+
+func (h *handlers) MapHandlers() error {
+	h.router.Route("/canvas", func(r chi.Router) {
+		r.Post("/", h.Create)
+		r.Get("/", h.GetAll)
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", h.GetByID)
+			r.Delete("/", h.Delete)
+			r.Put("/", h.Update)
+		})
+	})
+	h.router.Route("/ml", func(r chi.Router) {
+		r.Post("/image-to-text", h.ImageToText)
+	})
+
+	return nil
+}
+
+func (h *handlers) GetAll(w http.ResponseWriter, r *http.Request) {
+
+	filterOptions := filter.NewOptions()
+	// TODO: убрать хардкод
+	name := r.URL.Query().Get("name")
+	if name != "" {
+		err := filterOptions.AddField("name", filter.OperatorLike, name, filter.DataTypeStr)
+		if err != nil {
+			h.logger.Error("failed to parse query", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("cannot add name field into filter"))
+			return
+		}
+	}
+
+	created_at := r.URL.Query().Get("created_at")
+	if created_at != "" {
+		if !util.ValidateDates(created_at) {
+			h.logger.Error("wrong dates format")
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.ProError(400, "Invalid request parameters",
+				response.Details{
+					Field: "created_at",
+					Error: "Invalide date format",
+				}))
+			return
+		}
+	}
+
+	if created_at != "" {
+		var operator string
+		if strings.Contains(created_at, ":") {
+			operator = filter.OperatorBetween
+		} else {
+			operator = filter.OperatorEq
+		}
+		err := filterOptions.AddField("created_at", operator, created_at, filter.DataTypeDate)
+		if err != nil {
+			h.logger.Error("failed to parse query", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("cannot add created_at field into filter"))
+			return
+		}
+		fmt.Println(filterOptions.GetField("created_at"))
+	}
+
+	canvases, err := h.canvasUC.GetAll(context.TODO(), filterOptions)
+	if err != nil {
+		h.logger.Error("failed to get canvases", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to get all canvases"))
+		return
+	}
+
+	render.JSON(w, r, canvases)
+}
+
+func (h *handlers) GetByID(w http.ResponseWriter, r *http.Request) {
+	// id := r.Context().Value("id").(int)
+
+	// id := r.URL.Query().Get("id")
+
+	// TODO: полнейшая хуита, нужна или мидлвара или че то еще
+	id := chi.URLParam(r, "id")
+
+	// TODO: хуитта
+	newId, _ := strconv.Atoi(id)
+
+	canvasFound, err := h.canvasUC.GetByID(context.TODO(), newId)
+	if err != nil {
+		h.logger.Error("failed to get id", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to get id"))
+		return
+	}
+
+	file, err := http.Get(canvasFound.Url)
+	if err != nil {
+		h.logger.Error("failed to download file from s3", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.ProError(500, "failed to download file from s3",
+			response.Details{
+				Field: "aws",
+				Error: "failed to download",
+			}))
+	}
+	if file.StatusCode != http.StatusOK {
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.ProError(500, "failed to download file from s3",
+			response.Details{
+				Field: "aws",
+				Error: "failed to download",
+			}))
+	}
+	defer file.Body.Close()
+
+	fileContent, err := io.ReadAll(file.Body)
+	if err != nil {
+		http.Error(w, "Failed to read file content", http.StatusInternalServerError)
+	}
+
+	encodedFile := base64.StdEncoding.EncodeToString(fileContent)
+
+	response := canvas.CanvasBase{
+		CanvasID:  &newId,
+		Name:      canvasFound.Name,
+		UpdatedAt: canvasFound.UpdatedAt,
+		Url:       canvasFound.Url,
+		Data:      encodedFile,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+
+	// w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	// w.Header().Set("Content-Length", r.Header.Get("Content-Length"))
+	// w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s", filepath.Base(canvas.Url)))
+
+	//render.JSON(w, r, canvas)
+}
+
+func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
+	var req Request
+
+	// TODO: вынести ошибки в отдельный модуль
+	err := render.DecodeJSON(r.Body, &req)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	h.logger.Info("request body decoded", slog.Any("request", req))
+
+	if req.CanvasName == "" {
+		h.logger.Error("canvas_name is empty", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue("canvas_name cannot be empty"),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("canvas name cannot be empty"))
+		return
+	}
+
+	url := h.cfg.AWSConfig.SecretEndpoint + "/1/"
+
+	canvas := canvas.CanvasBase{
+		Name:      req.CanvasName,
+		UpdatedAt: time.Now(),
+		Url:       url,
+	}
+
+	id, err := h.canvasUC.Create(context.TODO(), canvas)
+	if err != nil {
+		h.logger.Error("failed to create canvas", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to create canvas"))
+		return
+	}
+
+	response := Response{
+		Id:         *id,
+		CanvasName: canvas.Name,
+		UpdatedAt:  canvas.UpdatedAt,
+	}
+
+	render.JSON(w, r, response)
+}
+
+func (h *handlers) Delete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	newId, err := strconv.Atoi(id)
+	if err != nil {
+		h.logger.Error("Invalid request parameters", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.ProError(400, "Invalid request parameters",
+			response.Details{
+				Field: "id",
+				Error: "Invalid id format",
+			}))
+		return
+	}
+
+	if err := h.canvasUC.Delete(context.TODO(), newId); err != nil {
+
+		if errors.Is(err, sql.ErrNoRows) {
+			h.logger.Error("no such canvas to be deleted", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, response.ProError(404, "Canvas with such id was not found",
+				response.Details{
+					Field: "id",
+					Error: "This id does not exist",
+				}))
+			return
+
+		} else {
+			h.logger.Error("failed to delete canvas", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.Error("failed to delete canvas"))
+			return
+		}
+	}
+
+	w.WriteHeader(204)
+}
+
+func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	newId, err := strconv.Atoi(id)
+	if err != nil {
+		h.logger.Error("Invalid request parameters", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.ProError(400, "Invalid request parameters",
+			response.Details{
+				Field: "id",
+				Error: "Invalid id format",
+			}))
+		return
+	}
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		h.logger.Error("failed to read file", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to read file"))
+		return
+	}
+
+	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, &file)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			h.logger.Error("no such canvas", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, response.ProError(404, "Canvas with such id was not found",
+				response.Details{
+					Field: "id",
+					Error: "This id does not exist",
+				}))
+			return
+
+		} else {
+			h.logger.Error("failed to update canvas", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.Error("failed to update canvas"))
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, *canvasFound)
+}
+
+// TODO: возможно перенести все взаимодействие с МЛ в отдельную сущность
+func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		h.logger.Error("failed to read file", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to read file"))
+		return
+	}
+
+	canvas, err := h.canvasUC.Update(context.TODO(), 9999999, &file)
+	if err != nil {
+		h.logger.Error("internal server error", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("internal server error"))
+		return
+	}
+
+	postBody, _ := json.Marshal(map[string]string{
+		"image_url": canvas.Url,
+	})
+
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err := http.Post("http://194.87.252.210:8000/predict/", "application/json", responseBody)
+	if err != nil {
+		h.logger.Error("ML service unavaliable", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("ML service unavaliable"))
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		h.logger.Error("cannot read from ml service", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("cannot read from ml service"))
+		return
+	}
+	sb := string(body)
+
+	response, _ := json.Marshal(map[string]string{
+		"text": sb,
+	})
+	render.JSON(w, r, response)
+}

@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:12-alpine
+    restart: on-failure
+    volumes:
+      - ./pkg/db/migrations/:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_DB: BajoJajo
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d BajoJajo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  app:
+    container_name: canvas
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "6000:6000"
+    environment:
+      ENV_PATH: "/app/.env"
+      CONFIG_PATH: "/app/config/local.yaml"
+
+volumes: # часть настроек для хранения данных
+  postgresdb-data:
+    driver: local

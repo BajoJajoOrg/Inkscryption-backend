@@ -1,0 +1,14 @@
+env: local
+http_server:
+  host: "localhost"
+  port: "6000"
+  timeout: 4s
+  idle_timeout: 60s
+postgres_config:
+  host: "db"
+  port: "5432"
+  database: "BajoJajo"
+aws_config:
+  aws_default_region: "ru-msk"
+  bucket_name: "bajojajo"
+  hotbox_endpoint: "https://hb.ru-msk.vkcloud-storage.ru"
