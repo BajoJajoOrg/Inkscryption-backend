@@ -412,9 +412,9 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + "9999999"
+	url := h.cfg.AWSConfig.SecretEndpoint + "/1/2/" + "1"
 
-	canvas, err := h.canvasUC.Update(context.TODO(), 9999999, url, &file)
+	canvas, err := h.canvasUC.Update(context.TODO(), 1, url, &file)
 	if err != nil {
 		h.logger.Error("internal server error", slog.Attr{
 			Key:   "error",
