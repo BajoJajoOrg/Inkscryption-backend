@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/db/postgresql"
@@ -24,6 +23,39 @@ type repository struct {
 
 func NewRepository(client *pgxpool.Pool) canvas.Repository {
 	return &repository{client: client}
+}
+
+func (r *repository) Update(ctx context.Context, id int, url string) error {
+
+	var currentURL sql.NullString
+	q := `
+		SELECT url
+		FROM canvas
+		WHERE id = $1
+	`
+	err := r.client.QueryRow(ctx, q, id).Scan(&currentURL)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("canvas with such id was not found")
+		}
+		return fmt.Errorf("sql error")
+	}
+
+	if currentURL.Valid && currentURL.String != "" {
+		return nil
+	}
+
+	q = `
+		UPDATE canvas
+		SET url = $1
+		WHERE id = $2
+	`
+
+	_, err = r.client.Exec(ctx, q, url, id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas url")
+	}
+	return nil
 }
 
 // Create implements canvas.CanvasStorage.
@@ -51,30 +83,30 @@ func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int
 		return nil, err
 	}
 
-	url := canvas.Url + strconv.Itoa(*canvas.CanvasID)
+	// url := canvas.Url + strconv.Itoa(*canvas.CanvasID)
 
-	q = `
-		UPDATE canvas
-		SET url = $1
-		WHERE id = $2
-	`
-	_, err = r.client.Exec(ctx, q, url, *canvas.CanvasID)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.Is(err, pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(
-				"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-				pgErr.Message,
-				pgErr.Detail,
-				pgErr.Where,
-				pgErr.Code,
-				pgErr.SQLState(),
-			)
-			return nil, newErr
-		}
-		return nil, err
-	}
+	// q = `
+	// 	UPDATE canvas
+	// 	SET url = $1
+	// 	WHERE id = $2
+	// `
+	// _, err = r.client.Exec(ctx, q, url, *canvas.CanvasID)
+	// if err != nil {
+	// 	var pgErr *pgconn.PgError
+	// 	if errors.Is(err, pgErr) {
+	// 		pgErr = err.(*pgconn.PgError)
+	// 		newErr := fmt.Errorf(
+	// 			"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
+	// 			pgErr.Message,
+	// 			pgErr.Detail,
+	// 			pgErr.Where,
+	// 			pgErr.Code,
+	// 			pgErr.SQLState(),
+	// 		)
+	// 		return nil, newErr
+	// 	}
+	// 	return nil, err
+	// }
 
 	return canvas.CanvasID, nil
 }

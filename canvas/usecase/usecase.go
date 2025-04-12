@@ -40,7 +40,11 @@ func (u *usecase) Delete(ctx context.Context, id int) error {
 	return u.canvasRepo.Delete(ctx, id)
 }
 
-func (u *usecase) Update(ctx context.Context, id int, file *multipart.File) (*canvas.CanvasBase, error) {
+func (u *usecase) Update(ctx context.Context, id int, url string, file *multipart.File) (*canvas.CanvasBase, error) {
+
+	if err := u.canvasRepo.Update(ctx, id, url); err != nil {
+		return nil, err
+	}
 
 	canvas, err := u.canvasRepo.GetByID(ctx, id)
 	if err != nil {

@@ -28,13 +28,18 @@ const (
 
 func main() {
 
+	// wd, err := os.Getwd()
+	// fmt.Print("Current dir", wd)
+
 	envPath := os.Getenv("ENV_PATH")
 	if envPath == "" {
-		envPath = ".env"
+		envPath = `C:\Users\broadcast\Desktop\BajoJaj\newBajoJajoo`
 	}
 
+	//err := godotenv.Load(envPath)
 	err := godotenv.Load(envPath)
 	if err != nil {
+		fmt.Println(err)
 		log.Fatalf("error loading .env file from path: %s", envPath)
 	}
 

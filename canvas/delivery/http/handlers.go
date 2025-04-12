@@ -168,47 +168,50 @@ func (h *handlers) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := http.Get(canvasFound.Url)
-	if err != nil {
-		h.logger.Error("failed to download file from s3", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+	// canvasFound := canvas.CanvasBase{
+	// 	CanvasID:  &newId,
+	// 	Name:      canvasFound.Name,
+	// 	UpdatedAt: canvasFound.UpdatedAt,
+	// 	Url:       canvasFound.Url,
+	// }
 
-		w.WriteHeader(http.StatusInternalServerError)
-		render.JSON(w, r, response.ProError(500, "failed to download file from s3",
-			response.Details{
-				Field: "aws",
-				Error: "failed to download",
-			}))
-	}
-	if file.StatusCode != http.StatusOK {
-		w.WriteHeader(http.StatusInternalServerError)
-		render.JSON(w, r, response.ProError(500, "failed to download file from s3",
-			response.Details{
-				Field: "aws",
-				Error: "failed to download",
-			}))
-	}
-	defer file.Body.Close()
+	if canvasFound.Url != "" {
+		file, err := http.Get(canvasFound.Url)
+		if err != nil {
+			h.logger.Error("failed to download file from s3", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
 
-	fileContent, err := io.ReadAll(file.Body)
-	if err != nil {
-		http.Error(w, "Failed to read file content", http.StatusInternalServerError)
-	}
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.ProError(500, "failed to download file from s3",
+				response.Details{
+					Field: "aws",
+					Error: "failed to download",
+				}))
+		}
+		if file.StatusCode != http.StatusOK {
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.ProError(500, "failed to download file from s3",
+				response.Details{
+					Field: "aws",
+					Error: "failed to download",
+				}))
+		}
+		defer file.Body.Close()
 
-	encodedFile := base64.StdEncoding.EncodeToString(fileContent)
+		fileContent, err := io.ReadAll(file.Body)
+		if err != nil {
+			http.Error(w, "Failed to read file content", http.StatusInternalServerError)
+		}
 
-	response := canvas.CanvasBase{
-		CanvasID:  &newId,
-		Name:      canvasFound.Name,
-		UpdatedAt: canvasFound.UpdatedAt,
-		Url:       canvasFound.Url,
-		Data:      encodedFile,
+		encodedFile := base64.StdEncoding.EncodeToString(fileContent)
+
+		canvasFound.Data = encodedFile
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	if err := json.NewEncoder(w).Encode(canvasFound); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 
@@ -248,12 +251,12 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := h.cfg.AWSConfig.SecretEndpoint + "/1/"
+	// url := h.cfg.AWSConfig.SecretEndpoint + "/1/"
 
 	canvas := canvas.CanvasBase{
 		Name:      req.CanvasName,
 		UpdatedAt: time.Now(),
-		Url:       url,
+		// Url:       url,
 	}
 
 	id, err := h.canvasUC.Create(context.TODO(), canvas)
@@ -357,7 +360,9 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, &file)
+	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + id
+
+	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, url, &file)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			h.logger.Error("no such canvas", slog.Attr{
@@ -402,7 +407,9 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canvas, err := h.canvasUC.Update(context.TODO(), 9999999, &file)
+	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + "9999999"
+
+	canvas, err := h.canvasUC.Update(context.TODO(), 9999999, url, &file)
 	if err != nil {
 		h.logger.Error("internal server error", slog.Attr{
 			Key:   "error",

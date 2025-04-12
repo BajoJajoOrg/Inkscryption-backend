@@ -14,6 +14,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id int) (*CanvasBase, error)
 	Create(ctx context.Context, canvas CanvasBase) (*int, error)
 	Delete(ctx context.Context, id int) error
+	Update(ctx context.Context, id int, url string) error
 }
 
 type AwsRepository interface {
@@ -25,7 +26,7 @@ type UseCase interface {
 	GetByID(ctx context.Context, id int) (*CanvasBase, error)
 	Create(ctx context.Context, canvas CanvasBase) (*int, error)
 	Delete(ctx context.Context, id int) error
-	Update(ctx context.Context, id int, file *multipart.File) (*CanvasBase, error)
+	Update(ctx context.Context, id int, url string, file *multipart.File) (*CanvasBase, error)
 	ImageToText(ctx context.Context, id int, file *multipart.File) error
 }
 
