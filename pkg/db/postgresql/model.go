@@ -15,7 +15,7 @@ func BuildQuery(filterOptions filter.Options) (string, []interface{}, error) {
 		PlaceholderFormat(sq.Dollar)
 
 	if nameFilter := filterOptions.GetField("name"); nameFilter != nil {
-		qb = qb.Where(sq.ILike{"canvas_name": nameFilter.Value})
+		qb = qb.Where(sq.ILike{"canvas_name": "%" + nameFilter.Value + "%"})
 	}
 
 	if dateFilter := filterOptions.GetField("created_at"); dateFilter != nil {
