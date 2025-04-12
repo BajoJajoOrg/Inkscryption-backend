@@ -34,6 +34,13 @@ services:
       ENV_PATH: "/app/.env"
       CONFIG_PATH: "/app/config/local.yaml"
 
+  adminer:
+    image: adminer
+    ports:
+      - 8000:8080
+    depends_on:
+      - db
+
 volumes: # часть настроек для хранения данных
   postgresdb-data:
     driver: local
