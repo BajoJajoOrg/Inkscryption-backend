@@ -520,5 +520,15 @@ func (h *handlers) TextToImage(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Content-Type", "image/svg+xml")
 	// w.WriteHeader(http.StatusOK)
 	// w.Write(data)
-	render.JSON(w, r, data)
+	// render.JSON(w, r, data)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(data)
+	if err != nil {
+		h.logger.Error("Cannot write response to client", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+	}
 }
