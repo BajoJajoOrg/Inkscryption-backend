@@ -58,6 +58,22 @@ func (r *repository) Update(ctx context.Context, id int, url string) error {
 	return nil
 }
 
+func (r *repository) UpdateText(ctx context.Context, id int, text string) error {
+
+	q := `
+		UPDATE canvas
+		SET text = $1
+		WHERE id = $2
+	`
+
+	_, err := r.client.Exec(ctx, q, text, id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas url")
+	}
+
+	return nil
+}
+
 // Create implements canvas.CanvasStorage.
 func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int, error) {
 	q := `
@@ -151,11 +167,12 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 	canvases := make([]canvas.CanvasBase, 0)
 
 	var nullUrl sql.NullString
+	var nullText sql.NullString
 
 	for rows.Next() {
 		var canvas canvas.CanvasBase
 
-		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt)
+		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.Is(err, pgErr) {
@@ -177,6 +194,12 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 			canvas.Url = nullUrl.String
 		} else {
 			canvas.Url = ""
+		}
+
+		if nullText.Valid {
+			canvas.Text = nullText.String
+		} else {
+			canvas.Text = ""
 		}
 
 		canvases = append(canvases, canvas)
@@ -204,7 +227,7 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 
 func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, error) {
 	q := `
-		SELECT id, canvas_name, url, update_time
+		SELECT id, canvas_name, url, update_time, text
 		FROM canvas
 		WHERE id = $1
 	`
@@ -213,8 +236,9 @@ func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, e
 	row := r.client.QueryRow(ctx, q, id)
 
 	var nullUrl sql.NullString
+	var nullText sql.NullString
 
-	err := row.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt)
+	err := row.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -236,6 +260,11 @@ func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, e
 		canvas.Url = nullUrl.String
 	} else {
 		canvas.Url = ""
+	}
+	if nullText.Valid {
+		canvas.Text = nullText.String
+	} else {
+		canvas.Text = ""
 	}
 
 	return canvas, nil

@@ -10,7 +10,7 @@ import (
 func BuildQuery(filterOptions filter.Options) (string, []interface{}, error) {
 
 	// TODO: возможно стоит попробовать сделать билдер более универсальным?
-	qb := sq.Select("id", "canvas_name", "url", "update_time").
+	qb := sq.Select("id", "canvas_name", "url", "update_time", "text").
 		From("canvas").
 		PlaceholderFormat(sq.Dollar)
 

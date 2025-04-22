@@ -57,6 +57,14 @@ func (u *usecase) Update(ctx context.Context, id int, url string, file *multipar
 	return canvas, u.awsRepo.Update(id, file)
 }
 
+func (u *usecase) MLUpdate(ctx context.Context, id int, file *multipart.File) error {
+	return u.awsRepo.Update(id, file)
+}
+
+func (u *usecase) UpdateText(ctx context.Context, id int, text string) error {
+	return u.canvasRepo.UpdateText(ctx, id, text)
+}
+
 func (u *usecase) ImageToText(ctx context.Context, id int, file *multipart.File) error {
 	return u.awsRepo.Update(id, file)
 }

@@ -32,6 +32,10 @@ type MLRequest struct {
 	Text string `json:"text"`
 }
 
+type MLResponse struct {
+	Text string `json:"text"`
+}
+
 type Response struct {
 	Id         int       `json:"id"`
 	UpdatedAt  time.Time `json:"update_time"`
@@ -78,6 +82,8 @@ func (h *handlers) MapHandlers() error {
 		r.Post("/image-to-text", h.ImageToText)
 		r.Post("/text-to-image", h.TextToImage)
 	})
+
+	// ml/image-to-text
 
 	return nil
 }
@@ -412,9 +418,22 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := h.cfg.AWSConfig.SecretEndpoint + "/1/2/" + "1"
+	string_id := r.FormValue("id")
+	id, err := strconv.Atoi(string_id)
+	if err != nil {
+		h.logger.Error("failed to get id", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
 
-	canvas, err := h.canvasUC.Update(context.TODO(), 1, url, &file)
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to get id"))
+		return
+	}
+
+	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + "9999999"
+
+	err = h.canvasUC.MLUpdate(context.TODO(), 9999999, &file)
 	if err != nil {
 		h.logger.Error("internal server error", slog.Attr{
 			Key:   "error",
@@ -427,12 +446,12 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 	}
 
 	postBody, _ := json.Marshal(map[string]string{
-		"image_url": canvas.Url,
+		"image_url": url,
 	})
 
 	responseBody := bytes.NewBuffer(postBody)
 
-	resp, err := http.Post("http://194.87.252.210:8000/predict/", "application/json", responseBody)
+	resp, err := http.Post("https://ml.hooli-pishem.ru/predict/", "application/json", responseBody)
 	if err != nil {
 		h.logger.Error("ML service unavaliable", slog.Attr{
 			Key:   "error",
@@ -456,7 +475,25 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 		render.JSON(w, r, response.Error("cannot read from ml service"))
 		return
 	}
-	sb := string(body)
+
+	var mlResp MLResponse
+	err = json.Unmarshal(body, &mlResp)
+	if err != nil {
+		h.logger.Error("failed to parse ML response", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to parse ML response"))
+		return
+	}
+
+	sb := mlResp.Text
+
+	h.logger.Info("sb ", sb, "id", id)
+
+	err = h.canvasUC.UpdateText(context.TODO(), id, sb)
 
 	response, _ := json.Marshal(map[string]string{
 		"text": sb,

@@ -10,6 +10,7 @@ type CanvasBase struct {
 	Url       string    `json:"canvas_url"`
 	UpdatedAt time.Time `json:"update_time"`
 	Data      any       `json:"data"`
+	Text      string    `json:"text"`
 }
 
 type CanvasList struct {
