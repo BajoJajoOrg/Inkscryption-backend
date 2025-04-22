@@ -495,10 +495,13 @@ func (h *handlers) ImageToText(w http.ResponseWriter, r *http.Request) {
 
 	err = h.canvasUC.UpdateText(context.TODO(), id, sb)
 
-	response, _ := json.Marshal(map[string]string{
-		"text": sb,
-	})
-	render.JSON(w, r, response)
+	// var textResp MLRequest
+	// textResp.Text = sb
+
+	// response, _ := json.Marshal(map[string]string{
+	// 	"text": sb,
+	// })
+	render.JSON(w, r, mlResp)
 }
 
 func (h *handlers) TextToImage(w http.ResponseWriter, r *http.Request) {
