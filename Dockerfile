@@ -10,6 +10,6 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/canvas/main.go
 
-EXPOSE 6000
+EXPOSE 8080
 
 CMD [ "./main" ]

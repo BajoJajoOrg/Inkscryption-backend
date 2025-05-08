@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"os"
 
+	folderDelivery "github.com/BajoJajoOrg/Inkscryption-backend/canvas/delivery/folder"
 	delivery "github.com/BajoJajoOrg/Inkscryption-backend/canvas/delivery/http"
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/repo"
+	folderRepo "github.com/BajoJajoOrg/Inkscryption-backend/canvas/repo/folder"
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/usecase"
+	folderUC "github.com/BajoJajoOrg/Inkscryption-backend/canvas/usecase/folder"
 	"github.com/BajoJajoOrg/Inkscryption-backend/config"
 	"github.com/BajoJajoOrg/Inkscryption-backend/middleware/logger"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/aws"
@@ -33,7 +36,7 @@ func main() {
 
 	envPath := os.Getenv("ENV_PATH")
 	if envPath == "" {
-		envPath = `C:\Users\broadcast\Desktop\BajoJaj\newBajoJajoo`
+		envPath = `C:\Users\broadcast\Desktop\BajoJaj\newBajoJajoo\.env`
 	}
 
 	//err := godotenv.Load(envPath)
@@ -58,20 +61,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	postgresRepo := repo.NewRepository(postgreSQLClient)
+	folderRepo := folderRepo.NewRepository(postgreSQLClient) // FOLDER REPO
 
-	awsClient, err := aws.NewClient(cfg.AWSConfig, log)
+	postgresRepo := repo.NewRepository(postgreSQLClient) // CANVAS REPO
+
+	awsClient, err := aws.NewClient(cfg.AWSConfig, log) // AWS
 	if err != nil {
 		log.Error("aws connection failed")
 	}
 
 	awsRepo := repo.NewAWSRepository(awsClient, cfg.AWSConfig)
 
-	usecase := usecase.New(postgresRepo, &awsRepo, log)
+	folderUC := folderUC.New(folderRepo, log) // FOLDER UC
+
+	usecase := usecase.New(postgresRepo, &awsRepo, log) // CANVAS UC
 
 	// _ = repository
 
-	router := chi.NewRouter()
+	router := chi.NewRouter() // ОБЩИЙ РОУТЕР
 
 	router.Use(middleware.RequestID)
 	router.Use(logger.New(log))
@@ -89,10 +96,16 @@ func main() {
 		w.Write([]byte("pong"))
 	})
 
-	delivery := delivery.New(cfg, router, usecase, log)
+	folderDelivery := folderDelivery.New(cfg, router, folderUC, log)
 
-	if err = delivery.MapHandlers(); err != nil {
-		log.Error("failed to map handlers")
+	delivery := delivery.New(cfg, router, usecase, log) // CANVAS DELIVERY
+
+	if err = folderDelivery.MapHandlers(); err != nil {
+		log.Error("failed to map folder handlers")
+	}
+
+	if err = delivery.MapHandlers(); err != nil { // CANVAS MAPPING
+		log.Error("failed to map delivery handlers")
 	}
 
 	errs := make(chan error, 2)

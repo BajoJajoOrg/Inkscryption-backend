@@ -25,7 +25,8 @@ import (
 )
 
 type Request struct {
-	CanvasName string `json:"canvas_name"`
+	Name     string `json:"name"`
+	FolderId int    `json:"folder_id"`
 }
 
 type MLRequest struct {
@@ -38,8 +39,10 @@ type MLResponse struct {
 
 type Response struct {
 	Id         int       `json:"id"`
-	UpdatedAt  time.Time `json:"update_time"`
 	CanvasName string    `json:"canvas_name"`
+	FolderId   int       `json:"folder_id"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type handlers struct {
@@ -251,7 +254,7 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("request body decoded", slog.Any("request", req))
 
-	if req.CanvasName == "" {
+	if req.Name == "" {
 		h.logger.Error("canvas_name is empty", slog.Attr{
 			Key:   "error",
 			Value: slog.StringValue("canvas_name cannot be empty"),
@@ -265,9 +268,11 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 	// url := h.cfg.AWSConfig.SecretEndpoint + "/1/"
 
 	canvas := canvas.CanvasBase{
-		Name:      req.CanvasName,
+		Name:      req.Name,
 		UpdatedAt: time.Now(),
-		// Url:       url,
+		FolderId:  req.FolderId,
+		UserId:    1,
+		CreatedAt: time.Now(),
 	}
 
 	id, err := h.canvasUC.Create(context.TODO(), canvas)
@@ -285,7 +290,9 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 	response := Response{
 		Id:         *id,
 		CanvasName: canvas.Name,
+		FolderId:   canvas.FolderId,
 		UpdatedAt:  canvas.UpdatedAt,
+		CreatedAt:  canvas.CreatedAt,
 	}
 
 	render.JSON(w, r, response)

@@ -77,11 +77,11 @@ func (r *repository) UpdateText(ctx context.Context, id int, text string) error 
 // Create implements canvas.CanvasStorage.
 func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int, error) {
 	q := `
-		INSERT INTO canvas (canvas_name, update_time) 
-		VALUES ($1, $2) 
+		INSERT INTO canvas (name, updated_at, folder_id, user_id, created_at) 
+		VALUES ($1, $2, $3, $4, $5) 
 		RETURNING id;
 		`
-	err := r.client.QueryRow(ctx, q, canvas.Name, canvas.UpdatedAt).Scan(&canvas.CanvasID)
+	err := r.client.QueryRow(ctx, q, canvas.Name, canvas.UpdatedAt, canvas.FolderId, canvas.UserId, canvas.CreatedAt).Scan(&canvas.CanvasID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -98,32 +98,6 @@ func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int
 		}
 		return nil, err
 	}
-
-	// url := canvas.Url + strconv.Itoa(*canvas.CanvasID)
-
-	// q = `
-	// 	UPDATE canvas
-	// 	SET url = $1
-	// 	WHERE id = $2
-	// `
-	// _, err = r.client.Exec(ctx, q, url, *canvas.CanvasID)
-	// if err != nil {
-	// 	var pgErr *pgconn.PgError
-	// 	if errors.Is(err, pgErr) {
-	// 		pgErr = err.(*pgconn.PgError)
-	// 		newErr := fmt.Errorf(
-	// 			"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-	// 			pgErr.Message,
-	// 			pgErr.Detail,
-	// 			pgErr.Where,
-	// 			pgErr.Code,
-	// 			pgErr.SQLState(),
-	// 		)
-	// 		return nil, newErr
-	// 	}
-	// 	return nil, err
-	// }
-
 	return canvas.CanvasID, nil
 }
 
@@ -172,7 +146,7 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 	for rows.Next() {
 		var canvas canvas.CanvasBase
 
-		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText)
+		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.Is(err, pgErr) {
@@ -227,7 +201,7 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 
 func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, error) {
 	q := `
-		SELECT id, canvas_name, url, update_time, text
+		SELECT id, name, url, updated_at, text
 		FROM canvas
 		WHERE id = $1
 	`

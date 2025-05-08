@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "6000:6000"
+      - "8080:8080"
     environment:
       ENV_PATH: "/app/.env"
       CONFIG_PATH: "/app/config/local.yaml"
