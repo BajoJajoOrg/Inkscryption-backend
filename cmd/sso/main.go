@@ -42,7 +42,7 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 
-	log.Info("starting canvas service")
+	log.Info("starting auth service")
 	log.Debug("debug messages are enabled")
 
 	log.Info("application stopped")

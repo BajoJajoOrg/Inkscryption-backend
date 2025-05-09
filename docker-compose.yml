@@ -27,9 +27,26 @@ services:
       - .env
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: canvas.Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      ENV_PATH: "/app/.env"
+      CONFIG_PATH: "/app/config/local.yaml"
+
+  auth:
+    container_name: auth
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: auth.Dockerfile
+    ports:
+      - "8082:8082"
     environment:
       ENV_PATH: "/app/.env"
       CONFIG_PATH: "/app/config/local.yaml"

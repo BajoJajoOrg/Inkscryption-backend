@@ -2,7 +2,7 @@ env: local
 http_server:
   host: "localhost"
   port: "8080"
-  aws_port: "8082"
+  sso_port: "8082"
   timeout: 4s
   idle_timeout: 60s
 postgres_config:
