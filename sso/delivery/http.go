@@ -117,9 +117,12 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u.AccessToken = accessToken
+	response := LoginUserReq{
+		AccessToken: accessToken,
+		Email:       u.Email,
+	}
 
-	render.JSON(w, r, u)
+	render.JSON(w, r, response)
 
 	// create a token and return it as response
 }
@@ -157,7 +160,7 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oldPass := u.Password
+	// oldPass := u.Password
 
 	u.Password = hashed
 
@@ -200,7 +203,6 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 	response := LoginUserReq{
 		AccessToken: accessToken,
 		Email:       u.Email,
-		Password:    oldPass,
 	}
 
 	render.JSON(w, r, response)

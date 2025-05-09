@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -77,7 +76,6 @@ func (h *handlers) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "user_id not found", http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(w, "Ваш user_id: %v\n", int(userID))
 
 	folderContent, err := h.folderUC.Get(context.TODO(), newId, int(userID))
 	if err != nil {
