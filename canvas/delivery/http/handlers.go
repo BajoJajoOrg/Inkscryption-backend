@@ -21,6 +21,7 @@ import (
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/response"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
 )
 
@@ -93,6 +94,13 @@ func (h *handlers) MapHandlers() error {
 
 func (h *handlers) GetAll(w http.ResponseWriter, r *http.Request) {
 
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
 	filterOptions := filter.NewOptions()
 	// TODO: убрать хардкод
 	name := r.URL.Query().Get("name")
@@ -144,7 +152,7 @@ func (h *handlers) GetAll(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(filterOptions.GetField("created_at"))
 	}
 
-	canvases, err := h.canvasUC.GetAll(context.TODO(), filterOptions)
+	canvases, err := h.canvasUC.GetAll(context.TODO(), filterOptions, strconv.Itoa(int(userID)))
 	if err != nil {
 		h.logger.Error("failed to get canvases", slog.Attr{
 			Key:   "error",
@@ -170,7 +178,14 @@ func (h *handlers) GetByID(w http.ResponseWriter, r *http.Request) {
 	// TODO: хуитта
 	newId, _ := strconv.Atoi(id)
 
-	canvasFound, err := h.canvasUC.GetByID(context.TODO(), newId)
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
+	canvasFound, err := h.canvasUC.GetByID(context.TODO(), newId, int(userID))
 	if err != nil {
 		h.logger.Error("failed to get id", slog.Attr{
 			Key:   "error",
@@ -265,13 +280,20 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
 	// url := h.cfg.AWSConfig.SecretEndpoint + "/1/"
 
 	canvas := canvas.CanvasBase{
 		Name:      req.Name,
 		UpdatedAt: time.Now(),
 		FolderId:  req.FolderId,
-		UserId:    1,
+		UserId:    int(userID),
 		CreatedAt: time.Now(),
 	}
 
@@ -317,7 +339,14 @@ func (h *handlers) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.canvasUC.Delete(context.TODO(), newId); err != nil {
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.canvasUC.Delete(context.TODO(), newId, int(userID)); err != nil {
 
 		if errors.Is(err, sql.ErrNoRows) {
 			h.logger.Error("no such canvas to be deleted", slog.Attr{
@@ -378,9 +407,16 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
 	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + id
 
-	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, url, &file)
+	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, int(userID), url, &file)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			h.logger.Error("no such canvas", slog.Attr{

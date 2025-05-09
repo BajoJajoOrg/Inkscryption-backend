@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -13,7 +14,9 @@ import (
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/interfaces/folder"
 	"github.com/BajoJajoOrg/Inkscryption-backend/config"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/response"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util/token"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
 )
 
@@ -29,18 +32,20 @@ type Response struct {
 }
 
 type handlers struct {
-	cfg      *config.Config
-	router   *chi.Mux
-	folderUC folder.UseCase
-	logger   *slog.Logger
+	cfg        *config.Config
+	router     *chi.Mux
+	folderUC   folder.UseCase
+	logger     *slog.Logger
+	tokenMaker *token.JWTMaker
 }
 
-func New(cfg *config.Config, router *chi.Mux, folderUC folder.UseCase, logger *slog.Logger) folder.Handlers {
+func New(cfg *config.Config, router *chi.Mux, folderUC folder.UseCase, logger *slog.Logger, secretKey string) folder.Handlers {
 	return &handlers{
-		cfg:      cfg,
-		router:   router,
-		folderUC: folderUC,
-		logger:   logger,
+		cfg:        cfg,
+		router:     router,
+		folderUC:   folderUC,
+		logger:     logger,
+		tokenMaker: token.NewJWTMaker(secretKey),
 	}
 }
 
@@ -64,18 +69,25 @@ func (h *handlers) MapHandlers() error {
 
 func (h *handlers) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-
 	newId, _ := strconv.Atoi(id)
 
-	folderContent, err := h.folderUC.Get(context.TODO(), newId, 1)
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+	fmt.Fprintf(w, "Ваш user_id: %v\n", int(userID))
+
+	folderContent, err := h.folderUC.Get(context.TODO(), newId, int(userID))
 	if err != nil {
-		h.logger.Error("failed to get canvases", slog.Attr{
+		h.logger.Error("failed to get folders", slog.Attr{
 			Key:   "error",
 			Value: slog.StringValue(err.Error()),
 		})
 
 		w.WriteHeader(http.StatusInternalServerError)
-		render.JSON(w, r, response.Error("failed to get all canvases"))
+		render.JSON(w, r, response.Error("failed to get all folders"))
 		return
 	}
 
@@ -99,6 +111,13 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("request body decoded", slog.Any("request", req))
 
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
 	if req.Name == "" { // TODO проверка айдишника
 		h.logger.Error("folder name is empty", slog.Attr{
 			Key:   "error",
@@ -117,7 +136,7 @@ func (h *handlers) Create(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now(),
 	}
 
-	id, err := h.folderUC.Create(context.TODO(), folder, 1)
+	id, err := h.folderUC.Create(context.TODO(), folder, int(userID))
 	if err != nil {
 		h.logger.Error("failed to create folder", slog.Attr{
 			Key:   "error",

@@ -26,13 +26,17 @@ func (u *usecase) Create(ctx context.Context, folder canvas.FolderBase, user_id 
 
 func (u *usecase) Get(ctx context.Context, folder_id int, user_id int) (*canvas.FolderContent, error) {
 
-	if folder_id == 0 {
-		return nil, nil
-	}
+	// if folder_id == 0 {
+	// 	return nil, nil
+	// }
 
 	folders, err := u.folderRepo.Get(ctx, folder_id, user_id)
 	if err != nil {
 		return nil, err
+	}
+
+	if folder_id == 0 {
+		return folders, nil
 	}
 
 	id := *folders.Folder.ID

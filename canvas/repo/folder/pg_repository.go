@@ -28,6 +28,9 @@ func (r *repository) GetFolder(ctx context.Context, folder_id int, user_id int) 
 		FROM folder
  		WHERE id = $1 AND user_id = $2
 	`
+
+	// print("\n", id, "\n")
+
 	row := r.client.QueryRow(ctx, q, folder_id, user_id)
 	err := row.Scan(&folder.ID, &folder.Name, &folder.Parent)
 	if err != nil {
@@ -60,30 +63,38 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
  		WHERE id = $1 AND user_id = $2
 	`
 
-	row := r.client.QueryRow(ctx, q, folder_id, user_id)
+	fmt.Println("Ваш user_id: ", user_id)
 
-	err := row.Scan(&folder.ID, &folder.Name, &folder.Parent, &folder.CreatedAt, &folder.UpdatedAt)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.Is(err, pgErr) {
-			pgErr = err.(*pgconn.PgError)
-			newErr := fmt.Errorf(
-				"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-				pgErr.Message,
-				pgErr.Detail,
-				pgErr.Where,
-				pgErr.Code,
-				pgErr.SQLState(),
-			)
-			return nil, newErr
+	if folder_id == 0 {
+		id := 0
+		folder.ID = &id
+		folder.Name = "root"
+	} else {
+		row := r.client.QueryRow(ctx, q, folder_id, user_id)
+
+		err := row.Scan(&folder.ID, &folder.Name, &folder.Parent, &folder.CreatedAt, &folder.UpdatedAt)
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.Is(err, pgErr) {
+				pgErr = err.(*pgconn.PgError)
+				newErr := fmt.Errorf(
+					"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
+					pgErr.Message,
+					pgErr.Detail,
+					pgErr.Where,
+					pgErr.Code,
+					pgErr.SQLState(),
+				)
+				return nil, newErr
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 
 	canvases := make([]canvas.CanvasBase, 0)
 
 	q = `
-		SELECT id, name, url, updated_at, text, folder_id
+		SELECT id, name, url, updated_at, text, folder_id, user_id, created_at
 		FROM canvas
 		WHERE folder_id = $1 AND user_id = $2
 	`
@@ -112,7 +123,7 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 	for rows.Next() {
 		var canvas canvas.CanvasBase
 
-		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId)
+		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId, &canvas.UserId, &canvas.CreatedAt)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.Is(err, pgErr) {
@@ -149,18 +160,20 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			pgErr = err.(*pgconn.PgError)
-			// newErr := fmt.Errorf(
-			// 	"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-			// 	pgErr.Message,
-			// 	pgErr.Detail,
-			// 	pgErr.Where,
-			// 	pgErr.Code,
-			// 	pgErr.SQLState(),
-			// )
-			return nil, err
+			newErr := fmt.Errorf(
+				"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
+				pgErr.Message,
+				pgErr.Detail,
+				pgErr.Where,
+				pgErr.Code,
+				pgErr.SQLState(),
+			)
+			return nil, newErr
 		}
 		return nil, err
 	}
+
+	print(canvases)
 
 	folders := make([]canvas.FolderBase, 0)
 
@@ -237,38 +250,6 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 	return &folderContent, nil
 
 }
-
-// func (r *repository) Get1(ctx context.Context, folder_id int, user_id int) (*canvas.FolderBase, error) {
-// 	q := `
-// 		SELECT id, name, parent_folder_id, updated_at, created_at
-// 		FROM folder
-// 		WHERE id = $1 AND user_id = $2
-// 	`
-
-// 	folder := &canvas.FolderBase{}
-
-// 	row := r.client.QueryRow(ctx, q, folder_id, user_id)
-
-// 	err := row.Scan(&folder.ID, &folder.Name, &folder.Parent, &folder.CreatedAt, &folder.UpdatedAt)
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.Is(err, pgErr) {
-// 			pgErr = err.(*pgconn.PgError)
-// 			newErr := fmt.Errorf(
-// 				"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-// 				pgErr.Message,
-// 				pgErr.Detail,
-// 				pgErr.Where,
-// 				pgErr.Code,
-// 				pgErr.SQLState(),
-// 			)
-// 			return nil, newErr
-// 		}
-// 		return nil, err
-// 	}
-
-// 	return folder, nil
-// }
 
 func (r *repository) Create(ctx context.Context, folder canvas.FolderBase, user_id int) (*int, error) {
 	q := `

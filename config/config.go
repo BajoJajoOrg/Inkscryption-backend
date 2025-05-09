@@ -11,15 +11,24 @@ import (
 type Config struct {
 	Env            string `yaml:"env" env:"ENV" env-default:"local"`
 	HTTPServer     `yaml:"http_server"`
+	GRPCServer     `yaml:"grpc_server"`
 	PostgresConfig `yaml:"postgres_config"`
 	AWSConfig      `yaml:"aws_config"`
+	TokenTTL       time.Duration `yaml:"token_ttl" env-required:"true"`
+	JWTSecretKey   string        `env:"JWT_SECRET_KEY"`
 }
 
 type HTTPServer struct {
 	Host         string        `yaml:"host" env-default:"localhost"`
 	Port         string        `yaml:"port" env-default:"6000"`
+	SSOPort      string        `yaml:"sso_port" env-default:"8082"`
 	Timeout      time.Duration `yaml:"timeout" env-default:"4s"`
 	Idle_timeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
+}
+
+type GRPCServer struct {
+	Port    int           `yaml:"port" env-default:"44044"`
+	Timeout time.Duration `yaml:"timeout" env-default:"5s"`
 }
 
 type PostgresConfig struct {

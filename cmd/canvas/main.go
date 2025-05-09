@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/joho/godotenv"
 )
 
@@ -80,6 +81,8 @@ func main() {
 
 	router := chi.NewRouter() // ОБЩИЙ РОУТЕР
 
+	var tokenAuth = jwtauth.New("HS256", []byte(cfg.JWTSecretKey), nil)
+
 	router.Use(middleware.RequestID)
 	router.Use(logger.New(log))
 	router.Use(middleware.Recoverer)
@@ -92,11 +95,14 @@ func main() {
 		MaxAge:           300,
 	}))
 
+	router.Use(jwtauth.Verifier(tokenAuth))
+	router.Use(jwtauth.Authenticator(tokenAuth))
+
 	router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
 	})
 
-	folderDelivery := folderDelivery.New(cfg, router, folderUC, log)
+	folderDelivery := folderDelivery.New(cfg, router, folderUC, log, cfg.JWTSecretKey)
 
 	delivery := delivery.New(cfg, router, usecase, log) // CANVAS DELIVERY
 
@@ -105,7 +111,7 @@ func main() {
 	}
 
 	if err = delivery.MapHandlers(); err != nil { // CANVAS MAPPING
-		log.Error("failed to map delivery handlers")
+		log.Error("failed to map canvas handlers")
 	}
 
 	errs := make(chan error, 2)

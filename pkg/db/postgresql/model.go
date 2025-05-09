@@ -7,12 +7,14 @@ import (
 	sq "github.com/Masterminds/squirrel"
 )
 
-func BuildQuery(filterOptions filter.Options) (string, []interface{}, error) {
+func BuildQuery(filterOptions filter.Options, id string) (string, []interface{}, error) {
 
 	// TODO: возможно стоит попробовать сделать билдер более универсальным?
 	qb := sq.Select("id", "name", "url", "updated_at", "text", "folder_id").
 		From("canvas").
 		PlaceholderFormat(sq.Dollar)
+
+	qb = qb.Where(sq.Eq{"user_id": id})
 
 	if nameFilter := filterOptions.GetField("name"); nameFilter != nil {
 		qb = qb.Where(sq.ILike{"canvas_name": "%" + nameFilter.Value + "%"})

@@ -101,11 +101,13 @@ func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int
 	return canvas.CanvasID, nil
 }
 
-func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) ([]canvas.CanvasBase, error) {
+func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options, id string) ([]canvas.CanvasBase, error) {
 
 	// сделать нормальные ошибки
 	// TODO: подумать как сделать нормальные args
-	query, args, err := postgresql.BuildQuery(filterOptions)
+	fmt.Println("Ваш user_id: ", id)
+
+	query, args, err := postgresql.BuildQuery(filterOptions, id)
 	if err != nil {
 		return nil, err
 	}
@@ -199,15 +201,15 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options) (
 	return canvases, nil
 }
 
-func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, error) {
+func (r *repository) GetByID(ctx context.Context, id int, userID int) (*canvas.CanvasBase, error) {
 	q := `
 		SELECT id, name, url, updated_at, text
 		FROM canvas
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $2
 	`
 	canvas := &canvas.CanvasBase{}
 
-	row := r.client.QueryRow(ctx, q, id)
+	row := r.client.QueryRow(ctx, q, id, userID)
 
 	var nullUrl sql.NullString
 	var nullText sql.NullString
@@ -244,14 +246,14 @@ func (r *repository) GetByID(ctx context.Context, id int) (*canvas.CanvasBase, e
 	return canvas, nil
 }
 
-func (r *repository) Delete(ctx context.Context, id int) error {
+func (r *repository) Delete(ctx context.Context, id int, userID int) error {
 	query := `
 		DELETE 
 		FROM canvas
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $2
 	`
 
-	result, err := r.client.Exec(ctx, query, id)
+	result, err := r.client.Exec(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}

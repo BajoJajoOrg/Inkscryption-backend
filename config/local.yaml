@@ -2,6 +2,7 @@ env: local
 http_server:
   host: "localhost"
   port: "8080"
+  aws_port: "8082"
   timeout: 4s
   idle_timeout: 60s
 postgres_config:
@@ -12,3 +13,7 @@ aws_config:
   aws_default_region: "ru-msk"
   bucket_name: "bajojajo"
   hotbox_endpoint: "https://hb.ru-msk.vkcloud-storage.ru"
+grpc_server:
+  port: 44044
+  timeout: 5s
+token_ttl: 1h
