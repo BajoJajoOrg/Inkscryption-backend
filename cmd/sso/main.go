@@ -68,7 +68,7 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "hooli-pishem.ru"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://hooli-pishem.ru"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "Csrft"},
 		AllowCredentials: true,
