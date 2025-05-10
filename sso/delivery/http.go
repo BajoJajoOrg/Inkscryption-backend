@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ type UserReq struct {
 }
 
 type LoginUserReq struct {
+	Id          string `json:"id"`
 	AccessToken string `json:"access_token"`
 	Email       string `json:"email"`
 	Password    string `json:"password"`
@@ -118,6 +120,7 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := LoginUserReq{
+		Id:          u.Id,
 		AccessToken: accessToken,
 		Email:       u.Email,
 	}
@@ -201,6 +204,7 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := LoginUserReq{
+		Id:          strconv.Itoa(*created),
 		AccessToken: accessToken,
 		Email:       u.Email,
 	}
