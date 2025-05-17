@@ -26,10 +26,10 @@ func BuildQuery(filterOptions filter.Options, folder_id int, user_id int) (strin
 	if dateFilter := filterOptions.GetField("created_at"); dateFilter != nil {
 		switch dateFilter.Operator {
 		case filter.OperatorEq:
-			qb = qb.Where(sq.Eq{"created_at": dateFilter.Value})
+			qb = qb.Where(sq.Eq{"updated_at": dateFilter.Value})
 		case filter.OperatorBetween:
 			dates := strings.Split(dateFilter.Value, ":")
-			qb = qb.Where(sq.Expr("created_at BETWEEN ? AND ?", dates[0], dates[1]))
+			qb = qb.Where(sq.Expr("updated_at BETWEEN ? AND ?", dates[0], dates[1]))
 		}
 	}
 
@@ -53,10 +53,10 @@ func BuildFolderQuery(filterOptions filter.Options, parent_folder_id int, user_i
 	if dateFilter := filterOptions.GetField("created_at"); dateFilter != nil {
 		switch dateFilter.Operator {
 		case filter.OperatorEq:
-			qb = qb.Where(sq.Eq{"created_at": dateFilter.Value})
+			qb = qb.Where(sq.Eq{"updated_at": dateFilter.Value})
 		case filter.OperatorBetween:
 			dates := strings.Split(dateFilter.Value, ":")
-			qb = qb.Where(sq.Expr("created_at BETWEEN ? AND ?", dates[0], dates[1]))
+			qb = qb.Where(sq.Expr("updated_at BETWEEN ? AND ?", dates[0], dates[1]))
 		}
 	}
 
