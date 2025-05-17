@@ -9,13 +9,15 @@ import (
 )
 
 type Config struct {
-	Env            string `yaml:"env" env:"ENV" env-default:"local"`
-	HTTPServer     `yaml:"http_server"`
-	GRPCServer     `yaml:"grpc_server"`
-	PostgresConfig `yaml:"postgres_config"`
-	AWSConfig      `yaml:"aws_config"`
-	TokenTTL       time.Duration `yaml:"token_ttl" env-required:"true"`
-	JWTSecretKey   string        `env:"JWT_SECRET_KEY"`
+	Env                 string `yaml:"env" env:"ENV" env-default:"local"`
+	HTTPServer          `yaml:"http_server"`
+	GRPCServer          `yaml:"grpc_server"`
+	PostgresConfig      `yaml:"postgres_config"`
+	RedisConfig         `yaml:"redis_config"`
+	AWSConfig           `yaml:"aws_config"`
+	TokenTTL            time.Duration `yaml:"token_ttl" env-required:"true"`
+	JWTAccessSecretKey  string        `env:"JWT_ACCESS_SECRET_KEY"`
+	JWTRefreshSecretKey string        `env:"JWT_REFRESH_SECRET_KEY"`
 }
 
 type HTTPServer struct {
@@ -37,6 +39,11 @@ type PostgresConfig struct {
 	Database string `yaml:"database"`
 	Username string `yaml:"username" env:"DB_USERNAME"`
 	Password string `yaml:"password" env:"DB_PASSWORD"`
+}
+
+type RedisConfig struct {
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
 }
 
 type AWSConfig struct {

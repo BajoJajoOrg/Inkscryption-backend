@@ -15,6 +15,7 @@ import (
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util/token"
 	"github.com/BajoJajoOrg/Inkscryption-backend/sso"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
 )
 
@@ -24,10 +25,15 @@ type UserReq struct {
 }
 
 type LoginUserReq struct {
-	Id          string `json:"id"`
-	AccessToken string `json:"access_token"`
-	Email       string `json:"email"`
-	Password    string `json:"password"`
+	Id           string `json:"id"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+}
+
+type RenewReq struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 type handlers struct {
@@ -38,22 +44,31 @@ type handlers struct {
 	tokenMaker *token.JWTMaker
 }
 
-func New(cfg *config.Config, router *chi.Mux, userUC sso.Usecase, logger *slog.Logger, secretKey string) sso.Handlers {
+func New(cfg *config.Config, router *chi.Mux, userUC sso.Usecase, logger *slog.Logger,
+	accessSecretKey string, refreshSecretKey string) sso.Handlers {
 	return &handlers{
 		cfg:        cfg,
 		router:     router,
 		userUC:     userUC,
 		logger:     logger,
-		tokenMaker: token.NewJWTMaker(secretKey),
+		tokenMaker: token.NewJWTMaker(accessSecretKey, refreshSecretKey),
 	}
 }
 
-func (h *handlers) MapHandlers() error {
+func (h *handlers) MapHandlers(tokenAuth *jwtauth.JWTAuth) error {
 	h.router.Route("/register", func(r chi.Router) {
 		r.Post("/", h.Register)
 	})
 	h.router.Route("/login", func(r chi.Router) {
 		r.Post("/", h.Login)
+	})
+
+	h.router.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+
+		r.Post("/logout", h.Logout)
+		r.Post("/renew", h.RenewToken)
 	})
 
 	return nil
@@ -107,7 +122,7 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, _, err := h.tokenMaker.CreateToken(*gu.ID, gu.Email, 15*time.Hour)
+	accessToken, _, err := h.tokenMaker.CreateAccessToken(*gu.ID, gu.Email, 15*time.Minute)
 	if err != nil {
 		h.logger.Error("error creating a token", slog.Attr{
 			Key:   "error",
@@ -119,15 +134,40 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken, _, err := h.tokenMaker.CreateRefreshToken(*gu.ID, gu.Email, 24*time.Hour)
+	if err != nil {
+		h.logger.Error("error creating a token", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error creating a token"))
+		return
+	}
+
+	userId := strconv.Itoa(*gu.ID)
+
+	err = h.userUC.AddSession(context.TODO(), refreshToken, userId)
+	if err != nil {
+		h.logger.Error("error adding a session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error adding a session"))
+		return
+	}
+
 	response := LoginUserReq{
-		Id:          u.Id,
-		AccessToken: accessToken,
-		Email:       u.Email,
+		Id:           userId,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Email:        u.Email,
 	}
 
 	render.JSON(w, r, response)
-
-	// create a token and return it as response
 }
 
 func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +231,7 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, _, err := h.tokenMaker.CreateToken(*created, u.Email, 15*time.Hour)
+	accessToken, _, err := h.tokenMaker.CreateAccessToken(*created, u.Email, 15*time.Minute)
 	if err != nil {
 		h.logger.Error("error creating a token", slog.Attr{
 			Key:   "error",
@@ -203,11 +243,164 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken, _, err := h.tokenMaker.CreateRefreshToken(*created, u.Email, 24*time.Hour)
+	if err != nil {
+		h.logger.Error("error creating a token", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error creating a token"))
+		return
+	}
+
+	userId := strconv.Itoa(*created)
+
+	err = h.userUC.AddSession(context.TODO(), refreshToken, userId)
+	if err != nil {
+		h.logger.Error("error adding a session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error adding a session"))
+		return
+	}
+
 	response := LoginUserReq{
-		Id:          strconv.Itoa(*created),
-		AccessToken: accessToken,
-		Email:       u.Email,
+		Id:           strconv.Itoa(*created),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Email:        u.Email,
 	}
 
 	render.JSON(w, r, response)
+}
+
+func (h *handlers) Logout(w http.ResponseWriter, r *http.Request) {
+	// var u LogoutReq
+
+	// err := render.DecodeJSON(r.Body, &u)
+	// if err != nil {
+	// 	h.logger.Error("failed to decode request body", slog.Attr{
+	// 		Key:   "error",
+	// 		Value: slog.StringValue(err.Error()),
+	// 	})
+
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	render.JSON(w, r, response.Error("failed to decode request"))
+	// 	return
+	// }
+
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
+	// println(strconv.FormatFloat(userID, 'f', -1, 64))
+
+	err := h.userUC.DeleteSession(context.TODO(), strconv.FormatFloat(userID, 'f', -1, 64))
+	if err != nil {
+		h.logger.Error("failed to delete session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to delete session"))
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
+	var u RenewReq
+
+	err := render.DecodeJSON(r.Body, &u)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok {
+		http.Error(w, "email not found", http.StatusUnauthorized)
+		return
+	}
+
+	err = h.userUC.GetSession(context.TODO(), u.RefreshToken, strconv.FormatFloat(userID, 'f', -1, 64))
+	if err != nil {
+		h.logger.Error("wrong refresh token", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("wrong refresh token"))
+		return
+	}
+
+	accessToken, _, err := h.tokenMaker.CreateAccessToken(int(userID), email, 15*time.Minute)
+	if err != nil {
+		h.logger.Error("error creating a token", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error creating a token"))
+		return
+	}
+
+	refreshToken, _, err := h.tokenMaker.CreateRefreshToken(int(userID), email, 24*time.Hour)
+	if err != nil {
+		h.logger.Error("error creating a token", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error creating a token"))
+		return
+	}
+
+	err = h.userUC.AddSession(context.TODO(), refreshToken, strconv.FormatFloat(userID, 'f', -1, 64))
+	if err != nil {
+		h.logger.Error("error adding a session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("error adding a session"))
+		return
+	}
+
+	response := LoginUserReq{
+		Id:           strconv.FormatFloat(userID, 'f', -1, 64),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Email:        email,
+	}
+
+	render.JSON(w, r, response)
+
 }

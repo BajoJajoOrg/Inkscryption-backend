@@ -81,7 +81,7 @@ func main() {
 
 	router := chi.NewRouter() // ОБЩИЙ РОУТЕР
 
-	var tokenAuth = jwtauth.New("HS256", []byte(cfg.JWTSecretKey), nil)
+	var tokenAuth = jwtauth.New("HS256", []byte(cfg.JWTAccessSecretKey), nil)
 
 	router.Use(middleware.RequestID)
 	router.Use(logger.New(log))
@@ -102,7 +102,7 @@ func main() {
 		w.Write([]byte("pong"))
 	})
 
-	folderDelivery := folderDelivery.New(cfg, router, folderUC, log, cfg.JWTSecretKey)
+	folderDelivery := folderDelivery.New(cfg, router, folderUC, log)
 
 	delivery := delivery.New(cfg, router, usecase, log) // CANVAS DELIVERY
 

@@ -17,6 +17,12 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
   app:
     container_name: canvas
     restart: on-failure

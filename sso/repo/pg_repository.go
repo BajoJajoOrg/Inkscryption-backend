@@ -62,7 +62,7 @@ func (r *repository) Get(ctx context.Context, email string) (*sso.User, error) {
 
 	user := sso.User{}
 
-	print("\n", email)
+	// print("\n", email)
 
 	row := r.client.QueryRow(ctx, q, email)
 

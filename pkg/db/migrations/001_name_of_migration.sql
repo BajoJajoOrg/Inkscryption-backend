@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public."user" (
 	"password" text NOT NULL,
 	updated_at timestamp DEFAULT CURRENT_DATE NOT NULL,
 	created_at timestamp DEFAULT CURRENT_DATE NOT NULL,
+    CONSTRAINT email_unique UNIQUE (email),
 	CONSTRAINT user_pkey PRIMARY KEY (id)
 );
 

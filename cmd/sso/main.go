@@ -17,7 +17,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -57,11 +59,33 @@ func main() {
 
 	userRepo := repo.NewRepository(postgreSQLClient)
 
-	userUC := usecase.New(userRepo, log)
+	redisCli := redis.NewClient(&redis.Options{
+		Addr:     cfg.RedisConfig.Host + ":" + cfg.RedisConfig.Port,
+		Password: "",
+		DB:       0,
+	})
+
+	defer func() {
+		if err := redisCli.Close(); err != nil {
+			log.Error("error closing redis connection: %w", err)
+		}
+		log.Info("redis closed without errors")
+	}()
+
+	_, pingErr := redisCli.Ping(context.TODO()).Result()
+	if pingErr != nil {
+		log.Error("failed to ping redis server %v", pingErr)
+	}
+
+	redisRepo := repo.NewSessionStorage(redisCli)
+
+	userUC := usecase.New(userRepo, redisRepo, log)
 
 	router := chi.NewRouter()
 
 	// var tokenAuth = jwtauth.New("HS256", []byte(cfg.JWTSecretKey), nil)
+
+	var tokenAuth = jwtauth.New("HS256", []byte(cfg.JWTAccessSecretKey), nil)
 
 	router.Use(middleware.RequestID)
 	router.Use(logger.New(log))
@@ -81,9 +105,9 @@ func main() {
 		w.Write([]byte("pong"))
 	})
 
-	userDelivery := delivery.New(cfg, router, userUC, log, cfg.JWTSecretKey)
+	userDelivery := delivery.New(cfg, router, userUC, log, cfg.JWTAccessSecretKey, cfg.JWTRefreshSecretKey)
 
-	if err = userDelivery.MapHandlers(); err != nil { // CANVAS MAPPING
+	if err = userDelivery.MapHandlers(tokenAuth); err != nil { // CANVAS MAPPING
 		log.Error("failed to map user handlers")
 	}
 

@@ -13,7 +13,6 @@ import (
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/interfaces/folder"
 	"github.com/BajoJajoOrg/Inkscryption-backend/config"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/response"
-	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util/token"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
@@ -31,20 +30,18 @@ type Response struct {
 }
 
 type handlers struct {
-	cfg        *config.Config
-	router     *chi.Mux
-	folderUC   folder.UseCase
-	logger     *slog.Logger
-	tokenMaker *token.JWTMaker
+	cfg      *config.Config
+	router   *chi.Mux
+	folderUC folder.UseCase
+	logger   *slog.Logger
 }
 
-func New(cfg *config.Config, router *chi.Mux, folderUC folder.UseCase, logger *slog.Logger, secretKey string) folder.Handlers {
+func New(cfg *config.Config, router *chi.Mux, folderUC folder.UseCase, logger *slog.Logger) folder.Handlers {
 	return &handlers{
-		cfg:        cfg,
-		router:     router,
-		folderUC:   folderUC,
-		logger:     logger,
-		tokenMaker: token.NewJWTMaker(secretKey),
+		cfg:      cfg,
+		router:   router,
+		folderUC: folderUC,
+		logger:   logger,
 	}
 }
 

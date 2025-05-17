@@ -18,3 +18,10 @@ type Session struct {
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
 }
+
+type RefreshSession struct {
+	ID           *int
+	UserID       *int
+	RefreshToken string
+	ExpiresAt    time.Time
+}
