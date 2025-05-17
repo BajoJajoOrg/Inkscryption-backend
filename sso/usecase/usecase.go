@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/sso"
 )
@@ -30,8 +31,8 @@ func (u *usecase) Get(ctx context.Context, email string) (*sso.User, error) {
 	return u.userRepo.Get(ctx, email)
 }
 
-func (u *usecase) AddSession(ctx context.Context, jwt string, id string) error {
-	return u.redisRepo.Add(ctx, jwt, id)
+func (u *usecase) AddSession(ctx context.Context, jwt string, id string, expiresAt time.Duration) error {
+	return u.redisRepo.Add(ctx, jwt, id, expiresAt)
 }
 
 func (u *usecase) GetSession(ctx context.Context, jwt string, id string) error {

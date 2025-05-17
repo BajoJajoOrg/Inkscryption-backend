@@ -148,7 +148,7 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 
 	userId := strconv.Itoa(*gu.ID)
 
-	err = h.userUC.AddSession(context.TODO(), refreshToken, userId)
+	err = h.userUC.AddSession(context.TODO(), refreshToken, userId, 24*time.Hour)
 	if err != nil {
 		h.logger.Error("error adding a session", slog.Attr{
 			Key:   "error",
@@ -257,7 +257,7 @@ func (h *handlers) Register(w http.ResponseWriter, r *http.Request) {
 
 	userId := strconv.Itoa(*created)
 
-	err = h.userUC.AddSession(context.TODO(), refreshToken, userId)
+	err = h.userUC.AddSession(context.TODO(), refreshToken, userId, 24*time.Hour)
 	if err != nil {
 		h.logger.Error("error adding a session", slog.Attr{
 			Key:   "error",
@@ -382,7 +382,7 @@ func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.userUC.AddSession(context.TODO(), refreshToken, strconv.FormatFloat(userID, 'f', -1, 64))
+	err = h.userUC.AddSession(context.TODO(), refreshToken, strconv.FormatFloat(userID, 'f', -1, 64), 24*time.Hour)
 	if err != nil {
 		h.logger.Error("error adding a session", slog.Attr{
 			Key:   "error",

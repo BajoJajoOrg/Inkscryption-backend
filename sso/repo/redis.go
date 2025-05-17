@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -16,8 +17,8 @@ func NewSessionStorage(db *redis.Client) *RedisStorage {
 	}
 }
 
-func (r *RedisStorage) Add(ctx context.Context, jwt string, id string) error {
-	err := r.db.Set(ctx, id, jwt, 0).Err()
+func (r *RedisStorage) Add(ctx context.Context, jwt string, id string, expiresAt time.Duration) error {
+	err := r.db.Set(ctx, id, jwt, expiresAt).Err()
 	// err := r.db.HSet
 	if err != nil {
 		return err
