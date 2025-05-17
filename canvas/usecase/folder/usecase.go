@@ -6,6 +6,7 @@ import (
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/interfaces/folder"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/filter"
 )
 
 type usecase struct {
@@ -24,13 +25,13 @@ func (u *usecase) Create(ctx context.Context, folder canvas.FolderBase, user_id 
 	return u.folderRepo.Create(ctx, folder, user_id)
 }
 
-func (u *usecase) Get(ctx context.Context, folder_id int, user_id int) (*canvas.FolderContent, error) {
+func (u *usecase) Get(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) (*canvas.FolderContent, error) {
 
 	// if folder_id == 0 {
 	// 	return nil, nil
 	// }
 
-	folders, err := u.folderRepo.Get(ctx, folder_id, user_id)
+	folders, err := u.folderRepo.Get(ctx, filterOptions, folder_id, user_id)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +43,6 @@ func (u *usecase) Get(ctx context.Context, folder_id int, user_id int) (*canvas.
 	id := *folders.Folder.ID
 
 	breadCrumbs := make([]canvas.BreadCrumb, 0)
-	// breadCrumbs = append(breadCrumbs, canvas.BreadCrumb{
-	// 	ID:   folders.Folder.ID,
-	// 	Name: folders.Folder.Name,
-	// })
 
 	for id != 0 {
 		folder, err := u.folderRepo.GetFolder(ctx, id, user_id)

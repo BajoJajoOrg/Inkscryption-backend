@@ -28,8 +28,8 @@ func (u *usecase) Create(ctx context.Context, canvas canvas.CanvasBase) (*int, e
 	return u.canvasRepo.Create(ctx, canvas)
 }
 
-func (u *usecase) GetAll(ctx context.Context, filterOptions filter.Options, id string) ([]canvas.CanvasBase, error) {
-	return u.canvasRepo.GetAll(ctx, filterOptions, id)
+func (u *usecase) GetAll(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) ([]canvas.CanvasBase, error) {
+	return u.canvasRepo.GetAll(ctx, filterOptions, folder_id, user_id)
 }
 
 func (u *usecase) GetByID(ctx context.Context, id int, userID int) (*canvas.CanvasBase, error) {

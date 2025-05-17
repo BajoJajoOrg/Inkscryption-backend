@@ -94,6 +94,8 @@ func (h *handlers) MapHandlers() error {
 
 func (h *handlers) GetAll(w http.ResponseWriter, r *http.Request) {
 
+	folder_id := r.Form.Get("folder_id")
+
 	_, claims, _ := jwtauth.FromContext(r.Context())
 	userID, ok := claims["id"].(float64)
 	if !ok {
@@ -152,7 +154,19 @@ func (h *handlers) GetAll(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(filterOptions.GetField("created_at"))
 	}
 
-	canvases, err := h.canvasUC.GetAll(context.TODO(), filterOptions, strconv.Itoa(int(userID)))
+	new_folder_id, err := strconv.Atoi(folder_id)
+	if err != nil {
+		h.logger.Error("failed to get canvases", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to get all canvases"))
+		return
+	}
+
+	canvases, err := h.canvasUC.GetAll(context.TODO(), filterOptions, new_folder_id, int(userID))
 	if err != nil {
 		h.logger.Error("failed to get canvases", slog.Attr{
 			Key:   "error",

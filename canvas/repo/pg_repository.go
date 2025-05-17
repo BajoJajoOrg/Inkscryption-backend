@@ -101,13 +101,13 @@ func (r *repository) Create(ctx context.Context, canvas canvas.CanvasBase) (*int
 	return canvas.CanvasID, nil
 }
 
-func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options, id string) ([]canvas.CanvasBase, error) {
+func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) ([]canvas.CanvasBase, error) {
 
 	// сделать нормальные ошибки
 	// TODO: подумать как сделать нормальные args
-	fmt.Println("Ваш user_id: ", id)
+	// fmt.Println("Ваш user_id: ", id)
 
-	query, args, err := postgresql.BuildQuery(filterOptions, id)
+	query, args, err := postgresql.BuildQuery(filterOptions, folder_id, user_id)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options, i
 	for rows.Next() {
 		var canvas canvas.CanvasBase
 
-		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId)
+		err = rows.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId, &canvas.UserId, &canvas.CreatedAt)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.Is(err, pgErr) {

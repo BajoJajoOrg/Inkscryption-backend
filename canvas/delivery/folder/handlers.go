@@ -4,15 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/interfaces/folder"
 	"github.com/BajoJajoOrg/Inkscryption-backend/config"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/filter"
 	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/response"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/util"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
@@ -74,7 +78,58 @@ func (h *handlers) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderContent, err := h.folderUC.Get(context.TODO(), newId, int(userID))
+	filterOptions := filter.NewOptions()
+	// TODO: убрать хардкод
+	name := r.URL.Query().Get("name")
+	if name != "" {
+		err := filterOptions.AddField("name", filter.OperatorLike, name, filter.DataTypeStr)
+		if err != nil {
+			h.logger.Error("failed to parse query", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("cannot add name field into filter"))
+			return
+		}
+	}
+
+	created_at := r.URL.Query().Get("created_at")
+	if created_at != "" {
+		if !util.ValidateDates(created_at) {
+			h.logger.Error("wrong dates format")
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.ProError(400, "Invalid request parameters",
+				response.Details{
+					Field: "created_at",
+					Error: "Invalide date format",
+				}))
+			return
+		}
+	}
+
+	if created_at != "" {
+		var operator string
+		if strings.Contains(created_at, ":") {
+			operator = filter.OperatorBetween
+		} else {
+			operator = filter.OperatorEq
+		}
+		err := filterOptions.AddField("created_at", operator, created_at, filter.DataTypeDate)
+		if err != nil {
+			h.logger.Error("failed to parse query", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("cannot add created_at field into filter"))
+			return
+		}
+		fmt.Println(filterOptions.GetField("created_at"))
+	}
+
+	folderContent, err := h.folderUC.Get(context.TODO(), filterOptions, newId, int(userID))
 	if err != nil {
 		h.logger.Error("failed to get folders", slog.Attr{
 			Key:   "error",

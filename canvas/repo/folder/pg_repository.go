@@ -8,6 +8,8 @@ import (
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas/interfaces/folder"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/db/postgresql"
+	"github.com/BajoJajoOrg/Inkscryption-backend/pkg/filter"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -54,7 +56,7 @@ func (r *repository) GetFolder(ctx context.Context, folder_id int, user_id int) 
 
 }
 
-func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canvas.FolderContent, error) {
+func (r *repository) Get(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) (*canvas.FolderContent, error) {
 	folder := &canvas.FolderBase{}
 
 	q := `
@@ -63,7 +65,7 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
  		WHERE id = $1 AND user_id = $2
 	`
 
-	fmt.Println("Ваш user_id: ", user_id)
+	// fmt.Println("Ваш user_id: ", user_id)
 
 	if folder_id == 0 {
 		id := 0
@@ -91,15 +93,22 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 		}
 	}
 
-	canvases := make([]canvas.CanvasBase, 0)
+	query, args, err := postgresql.BuildQuery(filterOptions, folder_id, user_id)
+	if err != nil {
+		return nil, err
+	}
 
-	q = `
-		SELECT id, name, url, updated_at, text, folder_id, user_id, created_at
-		FROM canvas
-		WHERE folder_id = $1 AND user_id = $2
-	`
+	pgxArgs := make([]any, 0, len(args))
+	for _, arg := range args {
+		switch v := arg.(type) {
+		// case time.Time:
+		// 	pgxArgs = append(pgxArgs, v.Format(time.RFC3339))
+		default:
+			pgxArgs = append(pgxArgs, v)
+		}
+	}
 
-	rows, err := r.client.Query(ctx, q, folder_id, user_id)
+	rows, err := r.client.Query(ctx, query, pgxArgs...)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -116,6 +125,8 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 		}
 		return nil, err
 	}
+
+	canvases := make([]canvas.CanvasBase, 0)
 
 	var nullUrl sql.NullString
 	var nullText sql.NullString
@@ -173,17 +184,24 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 		return nil, err
 	}
 
-	print(canvases)
+	// print(canvases)
 
-	folders := make([]canvas.FolderBase, 0)
+	query, args, err = postgresql.BuildFolderQuery(filterOptions, folder_id, user_id)
+	if err != nil {
+		return nil, err
+	}
 
-	q = `
-		SELECT id, name, parent_folder_id, updated_at, created_at
-		FROM folder
-		WHERE parent_folder_id = $1 AND user_id = $2
-	`
+	pgxArgs = make([]any, 0, len(args))
+	for _, arg := range args {
+		switch v := arg.(type) {
+		// case time.Time:
+		// 	pgxArgs = append(pgxArgs, v.Format(time.RFC3339))
+		default:
+			pgxArgs = append(pgxArgs, v)
+		}
+	}
 
-	rows, err = r.client.Query(ctx, q, folder_id, user_id)
+	rows, err = r.client.Query(ctx, query, pgxArgs...)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
@@ -200,6 +218,8 @@ func (r *repository) Get(ctx context.Context, folder_id int, user_id int) (*canv
 		}
 		return nil, err
 	}
+
+	folders := make([]canvas.FolderBase, 0)
 
 	for rows.Next() {
 		var folder canvas.FolderBase

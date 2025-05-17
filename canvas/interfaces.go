@@ -10,7 +10,7 @@ import (
 )
 
 type Repository interface {
-	GetAll(ctx context.Context, filterOptions filter.Options, id string) ([]CanvasBase, error)
+	GetAll(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) ([]CanvasBase, error)
 	GetByID(ctx context.Context, id int, userID int) (*CanvasBase, error)
 	Create(ctx context.Context, canvas CanvasBase) (*int, error)
 	Delete(ctx context.Context, id int, userID int) error
@@ -23,7 +23,7 @@ type AwsRepository interface {
 }
 
 type UseCase interface {
-	GetAll(ctx context.Context, filterOptions filter.Options, id string) ([]CanvasBase, error)
+	GetAll(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) ([]CanvasBase, error)
 	GetByID(ctx context.Context, id int, userID int) (*CanvasBase, error)
 	Create(ctx context.Context, canvas CanvasBase) (*int, error)
 	Delete(ctx context.Context, id int, userID int) error

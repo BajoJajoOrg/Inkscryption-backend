@@ -68,7 +68,7 @@ func (h *handlers) MapHandlers(tokenAuth *jwtauth.JWTAuth) error {
 		r.Use(jwtauth.Authenticator(tokenAuth))
 
 		r.Post("/logout", h.Logout)
-		r.Post("/renew", h.RenewToken)
+		r.Post("/refresh", h.RenewToken)
 	})
 
 	return nil
