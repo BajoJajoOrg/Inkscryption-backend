@@ -14,7 +14,10 @@ func BuildQuery(filterOptions filter.Options, folder_id int, user_id int) (strin
 		From("canvas").
 		PlaceholderFormat(sq.Dollar)
 
-	qb = qb.Where(sq.Eq{"folder_id": folder_id}, sq.Eq{"user_id": user_id})
+	qb = qb.Where(sq.Eq{
+		"folder_id": folder_id,
+		"user_id":   user_id,
+	})
 
 	if nameFilter := filterOptions.GetField("name"); nameFilter != nil {
 		qb = qb.Where(sq.ILike{"name": "%" + nameFilter.Value + "%"})
@@ -38,7 +41,10 @@ func BuildFolderQuery(filterOptions filter.Options, parent_folder_id int, user_i
 		From("folder").
 		PlaceholderFormat(sq.Dollar)
 
-	qb = qb.Where(sq.Eq{"parent_folder_id": parent_folder_id}, sq.Eq{"user_id": user_id})
+	qb = qb.Where(sq.Eq{
+		"parent_folder_id": parent_folder_id,
+		"user_id":          user_id,
+	})
 
 	if nameFilter := filterOptions.GetField("name"); nameFilter != nil {
 		qb = qb.Where(sq.ILike{"name": "%" + nameFilter.Value + "%"})
