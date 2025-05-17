@@ -318,3 +318,31 @@ func (r *repository) Delete(ctx context.Context, folder_id int) error {
 
 	return nil
 }
+
+func (r *repository) ChangeFolderParent(ctx context.Context, folder_id int, new_parent_id int) error {
+	q := `
+		UPDATE folder
+		SET parent_folder_id = $1
+		WHERE id = $2
+	`
+
+	_, err := r.client.Exec(ctx, q, new_parent_id, folder_id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas url")
+	}
+	return nil
+}
+
+func (r *repository) ChangeCanvasParent(ctx context.Context, canvas_id int, new_parent_id int) error {
+	q := `
+		UPDATE canvas
+		SET folder_id = $1
+		WHERE id = $2
+	`
+
+	_, err := r.client.Exec(ctx, q, new_parent_id, canvas_id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas url")
+	}
+	return nil
+}

@@ -2,6 +2,7 @@ package folder
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/BajoJajoOrg/Inkscryption-backend/canvas"
@@ -68,4 +69,14 @@ func (u *usecase) Get(ctx context.Context, filterOptions filter.Options, folder_
 
 func (u *usecase) Delete(ctx context.Context, folder_id int) error {
 	return u.folderRepo.Delete(ctx, folder_id)
+}
+
+func (u *usecase) ChangeParent(ctx context.Context, identity string, id int, new_parent_id int) error {
+	if identity == "canvas" {
+		return u.folderRepo.ChangeCanvasParent(ctx, id, new_parent_id)
+	} else if identity == "folder" {
+		return u.folderRepo.ChangeFolderParent(ctx, id, new_parent_id)
+	} else {
+		return fmt.Errorf("There is no such identity")
+	}
 }

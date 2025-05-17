@@ -266,56 +266,16 @@ func (r *repository) Delete(ctx context.Context, id int, userID int) error {
 	return nil
 }
 
-// func (r *repository) Update(ctx context.Context, canvas canvas.CanvasBase, img multipart.File) error {
+func (r *repository) ChangeParent(ctx context.Context, canvas_id int, new_parent_id int) error {
+	q := `
+		UPDATE canvas
+		SET folder_id = $1
+		WHERE id = $2
+	`
 
-// 	query := `
-// 		UPDATE canvas
-// 		SET
-// 	`
-
-// }
-
-// TODO: разделить функционал aws и postgres, пока что эта функция дрисня полнейшая
-// func (r *repository) Update(ctx context.Context, canvas canvas.CanvasBase, img multipart.File) error {
-
-// 	query := `
-// 		SELECT canvas_name
-// 		FROM canvas
-// 		WHERE id = $1
-// 	`
-
-// 	row := r.client.QueryRow(ctx, query, canvas.CanvasID)
-
-// 	var canvasName string
-
-// 	err := row.Scan(&canvasName)
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.Is(err, pgErr) {
-// 			pgErr = err.(*pgconn.PgError)
-// 			newErr := fmt.Errorf(
-// 				"SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s",
-// 				pgErr.Message,
-// 				pgErr.Detail,
-// 				pgErr.Where,
-// 				pgErr.Code,
-// 				pgErr.SQLState(),
-// 			)
-// 			return newErr
-// 		}
-// 		return err
-// 	}
-
-// 	// TODO: тут прям какой то лютый хардкод втф
-// 	filename := "1/" + canvasName
-// 	newUrl := "https://bajojajo.hb.ru-msk.vkcloud-storage.ru/" + filename
-
-// 	query = `
-// 		UPDATE canvas
-// 		SET url = $1, update_time = $2
-// 		WHERE id = $3
-// 	`
-
-// 	err := r.client.Exec()
-
-// }
+	_, err := r.client.Exec(ctx, q, new_parent_id, canvas_id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas url")
+	}
+	return nil
+}

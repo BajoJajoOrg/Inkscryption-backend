@@ -33,6 +33,12 @@ type Response struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type ChangeParentRequest struct {
+	Identity string `json:"identity"`
+	Id       int    `json:"id"`
+	ParentId int    `json:"parent_id"`
+}
+
 type handlers struct {
 	cfg      *config.Config
 	router   *chi.Mux
@@ -60,6 +66,10 @@ func (h *handlers) MapHandlers() error {
 			r.Delete("/", h.Delete)
 			// r.Put("/", h.Update)
 		})
+	})
+
+	h.router.Route("/change-parent", func(r chi.Router) {
+		r.Post("/", h.ChangeParent)
 	})
 
 	// ml/image-to-text
@@ -254,4 +264,34 @@ func (h *handlers) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(204)
+}
+
+func (h *handlers) ChangeParent(w http.ResponseWriter, r *http.Request) {
+	var u ChangeParentRequest
+
+	err := render.DecodeJSON(r.Body, &u)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	err = h.folderUC.ChangeParent(context.TODO(), u.Identity, u.Id, u.ParentId)
+	if err != nil {
+		h.logger.Error("failed to change parent", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to change parent"))
+		return
+	}
+
+	w.WriteHeader(200)
 }

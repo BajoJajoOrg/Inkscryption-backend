@@ -16,6 +16,7 @@ type Repository interface {
 	Delete(ctx context.Context, id int, userID int) error
 	Update(ctx context.Context, id int, url string) error
 	UpdateText(ctx context.Context, id int, text string) error
+	ChangeParent(ctx context.Context, canvas_id int, new_parent_id int) error
 }
 
 type AwsRepository interface {

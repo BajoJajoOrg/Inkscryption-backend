@@ -12,12 +12,15 @@ type Repository interface {
 	GetFolder(ctx context.Context, folder_id int, user_id int) (*canvas.FolderBase, error)
 	Create(ctx context.Context, folder canvas.FolderBase, user_id int) (*int, error)
 	Delete(ctx context.Context, folder_id int) error
+	ChangeFolderParent(ctx context.Context, folder_id int, new_parent_id int) error
+	ChangeCanvasParent(ctx context.Context, canvas_id int, new_parent_id int) error
 }
 
 type UseCase interface {
 	Create(ctx context.Context, folder canvas.FolderBase, user_id int) (*int, error)
 	Get(ctx context.Context, filterOptions filter.Options, folder_id int, user_id int) (*canvas.FolderContent, error)
 	Delete(ctx context.Context, folder_id int) error
+	ChangeParent(ctx context.Context, identity string, id int, new_parent_id int) error
 }
 
 type Handlers interface {
