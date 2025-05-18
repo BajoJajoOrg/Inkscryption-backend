@@ -63,12 +63,14 @@ func (h *handlers) MapHandlers(tokenAuth *jwtauth.JWTAuth) error {
 		r.Post("/", h.Login)
 	})
 
+	h.router.Route("/refresh", func(r chi.Router) {
+		r.Post("/", h.RenewToken)
+	})
+
 	h.router.Group(func(r chi.Router) {
 		r.Use(jwtauth.Verifier(tokenAuth))
 		r.Use(jwtauth.Authenticator(tokenAuth))
-
 		r.Post("/logout", h.Logout)
-		r.Post("/refresh", h.RenewToken)
 	})
 
 	return nil
