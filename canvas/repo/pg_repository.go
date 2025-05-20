@@ -58,6 +58,20 @@ func (r *repository) Update(ctx context.Context, id int, url string) error {
 	return nil
 }
 
+func (r *repository) UpdateName(ctx context.Context, id int, name string) error {
+	q := `
+		UPDATE canvas
+		SET name = $1
+		WHERE id = $2
+	`
+
+	_, err := r.client.Exec(ctx, q, name, id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas name")
+	}
+	return nil
+}
+
 func (r *repository) UpdateText(ctx context.Context, id int, text string) error {
 
 	q := `

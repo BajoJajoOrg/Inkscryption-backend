@@ -392,6 +392,7 @@ func (h *handlers) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
+
 	id := chi.URLParam(r, "id")
 	newId, err := strconv.Atoi(id)
 	if err != nil {
@@ -410,16 +411,18 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	file, _, err := r.FormFile("file")
-	if err != nil {
-		h.logger.Error("failed to read file", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+	// if err != nil {
+	// 	h.logger.Error("failed to read file", slog.Attr{
+	// 		Key:   "error",
+	// 		Value: slog.StringValue(err.Error()),
+	// 	})
 
-		w.WriteHeader(http.StatusBadRequest)
-		render.JSON(w, r, response.Error("failed to read file"))
-		return
-	}
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	render.JSON(w, r, response.Error("failed to read file"))
+	// 	return
+	// }
+
+	name := r.FormValue("name")
 
 	_, claims, _ := jwtauth.FromContext(r.Context())
 	userID, ok := claims["id"].(float64)
@@ -428,9 +431,13 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := h.cfg.AWSConfig.SecretEndpoint + "/1/" + id
+	var url string
 
-	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, int(userID), url, &file)
+	if file != nil {
+		url = h.cfg.AWSConfig.SecretEndpoint + "/1/" + id
+	}
+
+	canvasFound, err := h.canvasUC.Update(context.TODO(), newId, int(userID), url, name, &file)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			h.logger.Error("no such canvas", slog.Attr{
@@ -458,7 +465,13 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, *canvasFound)
+
+	if canvasFound == nil {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		render.JSON(w, r, *canvasFound)
+	}
+
 }
 
 // TODO: возможно перенести все взаимодействие с МЛ в отдельную сущность

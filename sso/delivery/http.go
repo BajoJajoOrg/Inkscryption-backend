@@ -102,6 +102,11 @@ func (h *handlers) Login(w http.ResponseWriter, r *http.Request) {
 
 	gu, err := h.userUC.Get(context.TODO(), u.Email)
 	if err != nil {
+		if err.Error() == "no rows in result set" {
+			w.WriteHeader(http.StatusUnauthorized)
+			render.JSON(w, r, response.Error("no such user"))
+			return
+		}
 		h.logger.Error("failed to get user", slog.Attr{
 			Key:   "error",
 			Value: slog.StringValue(err.Error()),

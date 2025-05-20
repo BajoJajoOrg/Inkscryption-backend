@@ -40,21 +40,32 @@ func (u *usecase) Delete(ctx context.Context, id int, userID int) error {
 	return u.canvasRepo.Delete(ctx, id, userID)
 }
 
-func (u *usecase) Update(ctx context.Context, id int, userID int, url string, file *multipart.File) (*canvas.CanvasBase, error) {
+func (u *usecase) Update(ctx context.Context, id int, userID int, url string, name string, file *multipart.File) (*canvas.CanvasBase, error) {
 
-	if err := u.canvasRepo.Update(ctx, id, url); err != nil {
-		return nil, err
+	if name != "" {
+		if err := u.canvasRepo.UpdateName(ctx, id, name); err != nil {
+			return nil, err
+		}
 	}
 
-	canvas, err := u.canvasRepo.GetByID(ctx, id, userID)
-	if err != nil {
-		return nil, err
-	}
-	if canvas == nil {
-		return nil, fmt.Errorf("canvas was not found")
+	if url != "" {
+		if err := u.canvasRepo.Update(ctx, id, url); err != nil {
+			return nil, err
+		}
+
+		canvas, err := u.canvasRepo.GetByID(ctx, id, userID)
+		if err != nil {
+			return nil, err
+		}
+		if canvas == nil {
+			return nil, fmt.Errorf("canvas was not found")
+		}
+
+		return canvas, u.awsRepo.Update(id, file)
 	}
 
-	return canvas, u.awsRepo.Update(id, file)
+	return nil, nil
+
 }
 
 func (u *usecase) MLUpdate(ctx context.Context, id int, file *multipart.File) error {
