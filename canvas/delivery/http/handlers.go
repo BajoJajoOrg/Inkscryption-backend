@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -85,6 +86,10 @@ func (h *handlers) MapHandlers() error {
 	h.router.Route("/ml", func(r chi.Router) {
 		r.Post("/image-to-text", h.ImageToText)
 		r.Post("/text-to-image", h.TextToImage)
+	})
+
+	h.router.Route("/sound-predict", func(r chi.Router) {
+		r.Post("/", h.SoundPredict)
 	})
 
 	// ml/image-to-text
@@ -631,6 +636,103 @@ func (h *handlers) TextToImage(w http.ResponseWriter, r *http.Request) {
 	// w.WriteHeader(http.StatusOK)
 	// w.Write(data)
 	// render.JSON(w, r, data)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(data)
+	if err != nil {
+		h.logger.Error("Cannot write response to client", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+	}
+}
+
+func (h *handlers) SoundPredict(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("audio_file")
+	if err != nil {
+		h.logger.Error("failed to read file", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to read file"))
+		return
+	}
+	defer file.Close()
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	part, err := writer.CreateFormFile("audio_file", header.Filename)
+	if err != nil {
+		h.logger.Error("failed to create form file", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to create form file"))
+		return
+	}
+
+	_, err = io.Copy(part, file)
+	if err != nil {
+		h.logger.Error("failed to copy file", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to copy file"))
+		return
+	}
+
+	err = writer.Close()
+	if err != nil {
+		h.logger.Error("failed to close multipart writer", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to close multipart writer"))
+		return
+	}
+
+	req, err := http.NewRequest("POST", "https://sound.hooli-pishem.ru/predict/", &buf)
+	if err != nil {
+		h.logger.Error("failed to create request", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to create request"))
+		return
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		h.logger.Error("ML service unavailable", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("ML service unavailable"))
+		return
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		h.logger.Error("can't read body from ML", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("can't read body from ML"))
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
