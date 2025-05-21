@@ -217,7 +217,7 @@ func (r *repository) GetAll(ctx context.Context, filterOptions filter.Options, f
 
 func (r *repository) GetByID(ctx context.Context, id int, userID int) (*canvas.CanvasBase, error) {
 	q := `
-		SELECT id, name, url, updated_at, text
+		SELECT id, name, url, updated_at, text, folder_id
 		FROM canvas
 		WHERE id = $1 AND user_id = $2
 	`
@@ -228,7 +228,7 @@ func (r *repository) GetByID(ctx context.Context, id int, userID int) (*canvas.C
 	var nullUrl sql.NullString
 	var nullText sql.NullString
 
-	err := row.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText)
+	err := row.Scan(&canvas.CanvasID, &canvas.Name, &nullUrl, &canvas.UpdatedAt, &nullText, &canvas.FolderId)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
