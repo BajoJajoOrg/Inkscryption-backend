@@ -24,6 +24,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
+	"golang.org/x/text/encoding/charmap"
 )
 
 type Request struct {
@@ -253,12 +254,22 @@ func (h *handlers) GetByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to read file content", http.StatusInternalServerError)
 		}
 
-		encodedFile := base64.StdEncoding.EncodeToString(fileContent)
+		// encodedFile := base64.StdEncoding.EncodeToString(fileContent)
 
+		// canvasFound.Data = encodedFile
+
+		decoder := charmap.Windows1251.NewDecoder()
+		utf8Content, err := decoder.Bytes(fileContent)
+		if err != nil {
+			http.Error(w, "Failed to decode file content", http.StatusInternalServerError)
+			return
+		}
+
+		encodedFile := base64.StdEncoding.EncodeToString(utf8Content)
 		canvasFound.Data = encodedFile
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(canvasFound); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
