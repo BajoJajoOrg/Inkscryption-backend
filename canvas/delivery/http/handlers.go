@@ -469,11 +469,12 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusOK)
+	// w.WriteHeader(http.StatusOK)
 
 	if canvasFound == nil {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(204)
 	} else {
+		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, *canvasFound)
 	}
 

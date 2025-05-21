@@ -297,7 +297,7 @@ func (h *handlers) ChangeParent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(204)
 }
 
 func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
@@ -348,5 +348,5 @@ func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(204)
 }
