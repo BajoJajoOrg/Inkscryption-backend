@@ -342,7 +342,21 @@ func (r *repository) ChangeCanvasParent(ctx context.Context, canvas_id int, new_
 
 	_, err := r.client.Exec(ctx, q, new_parent_id, canvas_id)
 	if err != nil {
-		return fmt.Errorf("error while updating canvas url")
+		return fmt.Errorf("error while updating canvas parent")
+	}
+	return nil
+}
+
+func (r *repository) Update(ctx context.Context, folder_id int, user_id int, name string) error {
+	q := `
+		UPDATE folder
+		SET name = $1 
+		WHERE id = $2 AND user_id = $3
+	`
+
+	_, err := r.client.Exec(ctx, q, name, folder_id, user_id)
+	if err != nil {
+		return fmt.Errorf("error while updating canvas name")
 	}
 	return nil
 }

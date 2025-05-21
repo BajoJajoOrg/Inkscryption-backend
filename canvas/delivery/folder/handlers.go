@@ -39,6 +39,10 @@ type ChangeParentRequest struct {
 	ParentId int    `json:"parent_id"`
 }
 
+type UpdateFolderRequest struct {
+	Name string `json:"name"`
+}
+
 type handlers struct {
 	cfg      *config.Config
 	router   *chi.Mux
@@ -64,7 +68,7 @@ func (h *handlers) MapHandlers() error {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", h.Get)
 			r.Delete("/", h.Delete)
-			// r.Put("/", h.Update)
+			r.Put("/", h.Update)
 		})
 	})
 
@@ -282,6 +286,57 @@ func (h *handlers) ChangeParent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.folderUC.ChangeParent(context.TODO(), u.Identity, u.Id, u.ParentId)
+	if err != nil {
+		h.logger.Error("failed to change parent", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, response.Error("failed to change parent"))
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func (h *handlers) Update(w http.ResponseWriter, r *http.Request) {
+	var u UpdateFolderRequest
+
+	id := chi.URLParam(r, "id")
+
+	newId, err := strconv.Atoi(id)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	err = render.DecodeJSON(r.Body, &u)
+	if err != nil {
+		h.logger.Error("failed to decode request body", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to decode request"))
+		return
+	}
+
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userID, ok := claims["id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found", http.StatusUnauthorized)
+		return
+	}
+
+	err = h.folderUC.Update(context.TODO(), newId, int(userID), u.Name)
 	if err != nil {
 		h.logger.Error("failed to change parent", slog.Attr{
 			Key:   "error",

@@ -80,3 +80,7 @@ func (u *usecase) ChangeParent(ctx context.Context, identity string, id int, new
 		return fmt.Errorf("There is no such identity")
 	}
 }
+
+func (u *usecase) Update(ctx context.Context, folder_id int, user_id int, name string) error {
+	return u.folderRepo.Update(ctx, folder_id, user_id, name)
+}
