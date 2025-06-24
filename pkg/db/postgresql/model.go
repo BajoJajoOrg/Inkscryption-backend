@@ -21,6 +21,7 @@ func BuildQuery(filterOptions filter.Options, folder_id int, user_id int) (strin
 
 	if nameFilter := filterOptions.GetField("name"); nameFilter != nil {
 		qb = qb.Where(sq.ILike{"name": "%" + nameFilter.Value + "%"})
+		qb = qb.Where(sq.ILike{"text": "%" + nameFilter.Value + "%"})
 	}
 
 	if dateFilter := filterOptions.GetField("created_at"); dateFilter != nil {
