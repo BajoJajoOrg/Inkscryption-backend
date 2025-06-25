@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-chi/render"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type UserReq struct {
@@ -42,6 +43,7 @@ type handlers struct {
 	userUC     sso.Usecase
 	logger     *slog.Logger
 	tokenMaker *token.JWTMaker
+	refreshKey string
 }
 
 func New(cfg *config.Config, router *chi.Mux, userUC sso.Usecase, logger *slog.Logger,
@@ -52,6 +54,7 @@ func New(cfg *config.Config, router *chi.Mux, userUC sso.Usecase, logger *slog.L
 		userUC:     userUC,
 		logger:     logger,
 		tokenMaker: token.NewJWTMaker(accessSecretKey, refreshSecretKey),
+		refreshKey: refreshSecretKey,
 	}
 }
 
@@ -340,20 +343,35 @@ func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userID, ok := claims["id"].(float64)
-	if !ok {
-		http.Error(w, "user_id not found", http.StatusUnauthorized)
+	claims, err := ParseRefreshToken(u.RefreshToken, h.refreshKey)
+	if err != nil {
+		h.logger.Error("failed to parse refresh to", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, response.Error("failed to parse refresh to"))
 		return
 	}
 
-	email, ok := claims["email"].(string)
-	if !ok {
-		http.Error(w, "email not found", http.StatusUnauthorized)
-		return
-	}
+	// _, claims, _ := jwtauth.FromContext(r.Context())
+	// userID, ok := claims["id"].(float64)
+	// if !ok {
+	// 	http.Error(w, "user_id not found", http.StatusUnauthorized)
+	// 	return
+	// }
 
-	err = h.userUC.GetSession(context.TODO(), u.RefreshToken, strconv.FormatFloat(userID, 'f', -1, 64))
+	// email, ok := claims["email"].(string)
+	// if !ok {
+	// 	http.Error(w, "email not found", http.StatusUnauthorized)
+	// 	return
+	// }
+
+	userID := claims.ID
+	email := claims.Email
+
+	err = h.userUC.GetSession(context.TODO(), u.RefreshToken, strconv.Itoa(userID))
 	if err != nil {
 		h.logger.Error("wrong refresh token", slog.Attr{
 			Key:   "error",
@@ -389,7 +407,7 @@ func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.userUC.AddSession(context.TODO(), refreshToken, strconv.FormatFloat(userID, 'f', -1, 64), 24*time.Hour)
+	err = h.userUC.AddSession(context.TODO(), refreshToken, strconv.Itoa(userID), 24*time.Hour)
 	if err != nil {
 		h.logger.Error("error adding a session", slog.Attr{
 			Key:   "error",
@@ -402,7 +420,7 @@ func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := LoginUserReq{
-		Id:           strconv.FormatFloat(userID, 'f', -1, 64),
+		Id:           strconv.Itoa(userID),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		Email:        email,
@@ -410,4 +428,23 @@ func (h *handlers) RenewToken(w http.ResponseWriter, r *http.Request) {
 
 	render.JSON(w, r, response)
 
+}
+
+func ParseRefreshToken(refreshToken string, secretKey string) (*token.UserClaims, error) {
+	claims := &token.UserClaims{}
+	tokenObj, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+		// Проверка алгоритма подписи
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	if !tokenObj.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+	return claims, nil
 }
